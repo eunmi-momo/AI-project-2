@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>오늘의 연예뉴스 퀴즈 + 관리자 (one-file)</title>
+  <title>오늘의 연예뉴스 퀴즈</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap');
@@ -95,17 +96,17 @@
   <!-- 퀴즈 화면 -->
   <div id="quizScreen" class="container mx-auto px-4 py-8 hidden">
     <div class="max-w-3xl mx-auto">
-      <div class="flex justify-between items-center mb-6">
+      <div class="flex justify-between items-center mb-6" id="quizHeaderRow">
         <button onclick="goHome()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors">← 홈으로</button>
         <div class="text-center">
           <h2 id="categoryTitle" class="text-xl sm:text-2xl font-bold text-gray-800"></h2>
-          <p id="questionCounter" class="text-gray-600 mt-1"></p>
+          <p id="questionCounter" class="text-gray-600 mt-1" style="display:none;"></p>
         </div>
         <div class="w-16"></div>
       </div>
 
       <!-- 프로그레스 바 -->
-      <div class="mb-6">
+      <div class="mb-6" id="quizProgressWrap">
         <div class="bg-gray-200 rounded-full h-3">
           <div id="progressBar" class="bg-purple-500 h-3 rounded-full transition-all duration-500" style="width:0%"></div>
         </div>
@@ -114,7 +115,7 @@
         </div>
       </div>
 
-      <div class="bg-white rounded-2xl shadow-xl p-6 mb-6">
+      <div class="bg-white rounded-2xl shadow-xl p-6 mb-6" id="quizMainBox">
         <div class="flex justify-between items-start mb-4">
           <h3 id="questionText" class="text-lg sm:text-xl font-semibold text-gray-800 flex-1 mr-3 kb"></h3>
           <button id="hintBtn" onclick="showHint()" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm whitespace-nowrap">💡 힌트보기</button>
@@ -153,6 +154,7 @@
         <div class="flex items-center gap-3">
           <label class="text-sm text-gray-600"><input type="checkbox" id="filterActive" class="mr-1"> 사용 중만 보기</label>
           <button id="createQuizBtn" class="px-4 py-2 rounded-lg bg-white border border-gray-300 hover:bg-gray-50">퀴즈 만들기</button>
+          <button id="settingsBtn" class="px-3 py-2 rounded-lg bg-white border border-gray-300 hover:bg-gray-50">설정</button>
           <button id="logoutBtn" class="px-3 py-2 rounded-lg bg-gray-700 text-white">로그아웃</button>
         </div>
       </div>
@@ -172,6 +174,21 @@
       </div>
     </section>
 
+    <!-- 설정 -->
+    <section id="settingsScreen" class="card p-5 hidden">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xl font-extrabold text-gray-800">설정</h2>
+        <button id="backToListBtnSettings" class="px-3 py-2 rounded-lg bg-gray-600 text-white">뒤로가기</button>
+      </div>
+
+      <div class="space-y-3">
+        <label class="text-sm font-semibold text-gray-700">ChatGPT API Key</label>
+        <input id="gptApiKeyInput" type="password" placeholder="sk-..." class="input" />
+        <div class="text-xs text-gray-500">* 이 키는 브라우저 localStorage에만 저장됩니다. 운영환경은 백엔드 프록시 권장.</div>
+        <button id="saveGptKeyBtn" class="mt-2 px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold">저장</button>
+      </div>
+    </section>
+
     <!-- 생성 -->
     <section id="createScreen" class="card p-5 hidden">
       <div class="flex items-center justify-between mb-3">
@@ -179,17 +196,17 @@
         <button id="backToListBtn1" class="px-3 py-2 rounded-lg bg-gray-600 text-white">뒤로가기</button>
       </div>
 
-      <!-- 사용 여부 토글 -->
-      <div class="flex items-center justify-between bg-slate-50 border border-gray-200 rounded-xl p-3 mb-3">
-        <div>
+      <!-- 사용 여부 토글: 라벨과 밀착 -->
+      <div class="bg-slate-50 border border-gray-200 rounded-xl p-3 mb-3">
+        <div class="flex items-center gap-3">
           <div class="text-sm font-semibold">사용 여부</div>
-          <div class="text-xs text-gray-500">목록/서비스 노출</div>
+          <label class="inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="createUse" class="sr-only peer" checked>
+            <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-green-500 transition"></div>
+            <div class="w-5 h-5 bg-white rounded-full -ml-9 translate-x-0 peer-checked:translate-x-5 transition shadow"></div>
+          </label>
         </div>
-        <label class="inline-flex items-center cursor-pointer">
-          <input type="checkbox" id="createUse" class="sr-only peer" checked>
-          <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-green-500 transition"></div>
-          <div class="w-5 h-5 bg-white rounded-full -ml-9 translate-x-0 peer-checked:translate-x-5 transition shadow"></div>
-        </label>
+        <div class="text-xs text-gray-500 mt-1">목록/서비스 노출</div>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -229,11 +246,24 @@
       </div>
     </section>
 
-    <!-- 편집 -->
+    <!-- 편집 (생성 화면과 동일 UI) -->
     <section id="editScreen" class="card p-5 hidden">
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-xl font-extrabold text-gray-800">기사 편집</h2>
         <button id="backToListBtn2" class="px-3 py-2 rounded-lg bg-gray-600 text-white">뒤로가기</button>
+      </div>
+
+      <!-- 사용 여부 토글: 라벨 옆 밀착 + 상단 배치 -->
+      <div class="bg-slate-50 border border-gray-200 rounded-xl p-3 mb-3">
+        <div class="flex items-center gap-3">
+          <div class="text-sm font-semibold">사용 여부</div>
+          <label class="inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="editUse" class="sr-only peer">
+            <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-green-500 transition"></div>
+            <div class="w-5 h-5 bg-white rounded-full -ml-9 translate-x-0 peer-checked:translate-x-5 transition shadow"></div>
+          </label>
+        </div>
+        <div class="text-xs text-gray-500 mt-1">목록/서비스 노출</div>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -260,18 +290,6 @@
         </div>
       </div>
 
-      <div class="flex items-center justify-between bg-slate-50 border border-gray-200 rounded-xl p-3 mt-3">
-        <div>
-          <div class="text-sm font-semibold">사용 여부</div>
-          <div class="text-xs text-gray-500">목록/서비스 노출</div>
-        </div>
-        <label class="inline-flex items-center cursor-pointer">
-          <input type="checkbox" id="editUse" class="sr-only peer">
-          <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-green-500 transition"></div>
-          <div class="w-5 h-5 bg-white rounded-full -ml-9 translate-x-0 peer-checked:translate-x-5 transition shadow"></div>
-        </label>
-      </div>
-
       <h3 class="mt-4 font-bold">현재 적용된 퀴즈</h3>
       <div id="appliedList" class="mt-2 space-y-2"></div>
 
@@ -287,6 +305,16 @@
     const VALID_ID='sbsent', VALID_PW='momo1234';
     const STORAGE_KEY = 'qa_articles';
 
+    // (사용자 제공) 인기뉴스 TOP10 원제목/원링크 그대로. 지금은 5개지만 10개로 계속 확장 가능.
+    const popularArticlesTop10 = [
+      { title: '홍진경, 결혼 22년 만에 이혼…"남이 된 후 진짜 우정 되찾아"', url: 'https://ent.sbs.co.kr/m/article.do?article_id=E10010304723' },
+      { title: '애즈원 이민, 자택서 사망 확인...크리스탈 급거 귀국', url: 'https://ent.sbs.co.kr/m/article.do?article_id=E10010304730' },
+      { title: "'사마귀' 고현정, 사형수 됐다…남자 5명 죽인 잔혹한 연쇄살인마 파격 변신", url: 'https://ent.sbs.co.kr/m/article.do?article_id=E10010304767' },
+      { title: '이수근, 가슴저린 부친상..."유년기 단둘이 지낸 애틋한 아버지"', url: 'https://ent.sbs.co.kr/m/article.do?article_id=E10010304696' },
+      { title: '홍진경, 이혼 뒤늦게 밝힌 이유..."좋은 부모가 되기 위한 노력"', url: 'https://ent.sbs.co.kr/m/article.do?article_id=E10010304760' },
+      // 필요 시 여기 뒤에 5개 더 추가하면 자동으로 랜덤 5개 노출됨
+    ];
+
     const $ = (id)=>document.getElementById(id);
     function show(el){ el.classList.remove('hidden'); }
     function hide(el){ el.classList.add('hidden'); }
@@ -298,7 +326,7 @@
 
     /* ===================== 사용자 로직 ===================== */
     // 기존 더미 퀴즈(보충용)
-    const quizData = { /* ——— (네가 준 데이터 그대로) ——— */ 
+    const quizData = { 
       '방송': [
         { question: "SBS '궁금한 이야기Y'에서 다룬 한강 괴물 목격담에서, 목격자가 본 생명체의 길이는 얼마나 되었을까요?", options: ["5미터", "10미터", "15미터", "20미터"], correct: 1, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304831" },
         { question: "'궁금한 이야기Y'는 언제 방송되나요?", options: ["목요일 밤 8시 50분", "금요일 밤 8시 50분", "토요일 밤 8시 50분", "일요일 밤 8시 50분"], correct: 1, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304831" },
@@ -410,7 +438,6 @@
       if (!nickname) { alert('닉네임을 입력해주세요!'); return; }
       userNickname = nickname;
 
-      // 관리자 등록 퀴즈→우선, 부족하면 더미로 보충
       const adminQs = getAdminQuizzesByCategory(currentCategory);
       const need = 6;
       let list = adminQs.slice(0, need);
@@ -434,6 +461,8 @@
 
     document.addEventListener('DOMContentLoaded', function() {
       updateHomeBoards();
+      // 상단 카운터 텍스트는 사용하지 않음
+      const qc = $('questionCounter'); if (qc) qc.style.display = 'none';
       $('nicknameInput').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') startQuizWithNickname();
       });
@@ -447,7 +476,6 @@
       $('progressBar').style.width = `${progress}%`;
       $('progressText').textContent = `${currentQuestionIndex + 1} / ${currentQuestions.length}`;
 
-      $('questionCounter').textContent = `문제 ${currentQuestionIndex + 1} / ${currentQuestions.length}`;
       $('questionText').textContent = q.question;
 
       const optionsContainer = $('optionsContainer');
@@ -460,6 +488,10 @@
         div.onclick = () => selectAnswer(idx, div);
         optionsContainer.appendChild(div);
       });
+
+      // 진행 중에는 헤더/프로그레스 보이기
+      show(document.getElementById('quizHeaderRow'));
+      show(document.getElementById('quizProgressWrap'));
     }
 
     function selectAnswer(selectedIndex, el) {
@@ -502,6 +534,39 @@
       return "괜찮아요! 기사 힌트도 적극 활용해보자 😊";
     }
 
+    // 하단 박스 빌더: 랭킹 / 인기뉴스 (각각 박스)
+    function buildRankingBox(rankingHTML) {
+      return `
+        <div class="bg-white rounded-2xl shadow p-5">
+          <h4 class="text-lg font-bold text-gray-800 mb-3">🏆 오늘의 랭킹 TOP 10</h4>
+          <div class="space-y-2">
+            ${rankingHTML}
+          </div>
+        </div>
+      `;
+    }
+    function buildPopularBox() {
+      const howMany = 5;
+      const selected = pickRandom(popularArticlesTop10, Math.min(howMany, popularArticlesTop10.length));
+      while (selected.length < howMany) selected.push({ title: '콘텐츠 준비 중', url: '#', placeholder: true });
+
+      const items = selected.map((item) => `
+        <a href="${item.url}" target="_blank" rel="noopener" 
+           class="block rounded-2xl border border-gray-200 bg-white px-4 py-3 hover:shadow transition kb">
+          ${item.title}
+        </a>
+      `).join('');
+
+      return `
+        <div class="bg-white rounded-2xl shadow p-5">
+          <h4 class="text-lg font-bold text-gray-800 mb-3">🔥 오늘의 인기뉴스 TOP 5</h4>
+          <div class="grid gap-2">
+            ${items}
+          </div>
+        </div>
+      `;
+    }
+
     function showCompletionView() {
       const score = Math.round((correctAnswers / currentQuestions.length) * 100);
 
@@ -522,10 +587,15 @@
         </div>`;
       }).join('');
 
+      // 결과 화면: 상단 헤더/프로그레스바 감춤, 좌상단 단독 홈버튼 없음
+      hide(document.getElementById('quizHeaderRow'));
+      hide(document.getElementById('quizProgressWrap'));
+
       const box = $('optionsContainer');
       box.innerHTML = `
         <div class="space-y-6">
-          <div class="bg-white rounded-2xl shadow p-6 text-center">
+          <!-- 내 결과 박스 -->
+          <div class="bg-white rounded-2xl border border-gray-200 shadow p-6 text-center">
             <div class="text-5xl mb-3">🎉</div>
             <h3 class="text-2xl font-bold text-gray-800 mb-1">${currentCategory} 퀴즈 완료!</h3>
             <p class="text-purple-600 font-bold mb-3">${userNickname}님의 점수: ${score}점 (${correctAnswers}/${currentQuestions.length})</p>
@@ -535,16 +605,31 @@
               <button onclick="goHome()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">홈으로 가기</button>
             </div>
           </div>
+
+          <!-- 하단: 좌우 5:5 -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+              ${buildRankingBox(rankingHTML)}
+            </div>
+            <div>
+              ${buildPopularBox()}
+            </div>
+          </div>
         </div>
       `;
 
+      // 문제 본문/힌트 버튼 감춤
       $('questionText').textContent = '';
       $('hintBtn').style.display = 'none';
+
       updateHomeBoards();
     }
 
     function retryQuiz() {
-      // 같은 로직으로 다시 세팅
+      // 헤더/프로그레스 복원
+      show(document.getElementById('quizHeaderRow'));
+      show(document.getElementById('quizProgressWrap'));
+
       const adminQs = getAdminQuizzesByCategory(currentCategory);
       const need = 6;
       let list = adminQs.slice(0, need);
@@ -570,6 +655,8 @@
     function goHome() {
       hide($('quizScreen')); hide($('nicknameScreen')); show($('homeScreen'));
       $('hintBtn').style.display = 'inline-flex';
+      show(document.getElementById('quizHeaderRow'));
+      show(document.getElementById('quizProgressWrap'));
       updateHomeBoards();
     }
 
@@ -578,7 +665,6 @@
       hide($('homeScreen')); hide($('nicknameScreen')); hide($('quizScreen'));
       show($('adminWrap'));
       hide($('btnGoAdmin')); show($('btnGoUser'));
-      // 로그인 상태 확인
       if(localStorage.getItem('logged_demo')==='1'){ showList(); } else { showLogin(); }
     });
     $('btnGoUser').addEventListener('click', ()=>{
@@ -592,19 +678,19 @@
     let createPreviewQuizzes = [];
 
     function showLogin(){
-      show($('loginScreen')); hide($('listScreen')); hide($('createScreen')); hide($('editScreen'));
+      show($('loginScreen')); hide($('listScreen')); hide($('createScreen')); hide($('editScreen')); hide($('settingsScreen'));
       $('logoutBtn').classList.add('hidden');
     }
     function showList(){
-      hide($('loginScreen')); show($('listScreen')); hide($('createScreen')); hide($('editScreen'));
+      hide($('loginScreen')); show($('listScreen')); hide($('createScreen')); hide($('editScreen')); hide($('settingsScreen'));
       $('logoutBtn').classList.remove('hidden');
       renderList();
     }
     function showCreate(){
-      hide($('loginScreen')); hide($('listScreen')); show($('createScreen')); hide($('editScreen'));
+      hide($('loginScreen')); hide($('listScreen')); show($('createScreen')); hide($('editScreen')); hide($('settingsScreen'));
     }
     function showEdit(){
-      hide($('loginScreen')); hide($('listScreen')); hide($('createScreen')); show($('editScreen'));
+      hide($('loginScreen')); hide($('listScreen')); hide($('createScreen')); show($('editScreen')); hide($('settingsScreen'));
     }
 
     // 로그인
@@ -615,6 +701,20 @@
       else alert('아이디 또는 비밀번호가 잘못되었습니다.');
     });
     $('logoutBtn').addEventListener('click', ()=>{ localStorage.removeItem('logged_demo'); showLogin(); });
+
+    // 설정 화면
+    $('settingsBtn').addEventListener('click', ()=>{
+      hide($('loginScreen')); hide($('listScreen')); hide($('createScreen')); hide($('editScreen'));
+      show($('settingsScreen'));
+      $('gptApiKeyInput').value = localStorage.getItem('gpt_api_key') || '';
+    });
+    $('backToListBtnSettings').addEventListener('click', showList);
+    $('saveGptKeyBtn').addEventListener('click', ()=>{
+      const v = $('gptApiKeyInput').value.trim();
+      if(!v){ alert('API Key를 입력하세요.'); return; }
+      localStorage.setItem('gpt_api_key', v);
+      alert('저장되었습니다.');
+    });
 
     // 목록 렌더
     function renderList(){
@@ -652,6 +752,7 @@
     }
     $('filterActive').addEventListener('change', renderList);
 
+    // 생성 화면 진입/나가기
     $('createQuizBtn').addEventListener('click', ()=>{
       $('createUse').checked = true;
       $('createCategory').value = '방송';
@@ -706,11 +807,55 @@
       return Array.from(document.querySelectorAll('#'+containerId+' input[type=checkbox]')).filter(x=>x.checked).map(x=>+x.getAttribute('data-i'));
     }
 
-    // 생성 화면: 생성
-    $('createGenerate').addEventListener('click', ()=>{
+    // 생성 화면: 퀴즈 생성 (GPT 시도 → 실패 시 더미 폴백)
+    $('createGenerate').addEventListener('click', async ()=>{
       const content = $('createContent').value.trim();
       if(!content){ alert('본문을 입력하세요'); return; }
-      const qs = dummyQuizzes($('createCategory').value, content, 2);
+
+      const category = $('createCategory').value;
+      const key = localStorage.getItem('gpt_api_key');
+
+      async function generateViaGPT(cat, body){
+        if(!key) return null;
+        try{
+          const sys = "You are a quiz generator for Korean entertainment news. Output STRICT JSON with {\"quizzes\":[...]} containing exactly 2 items. Each item: either {\"type\":\"MCQ\",\"question\":\"...\",\"options\":[\"A\",\"B\",\"C\",\"D\"],\"correct\":0-3,\"explanation\":\"...\"} or {\"type\":\"OX\",\"question\":\"...\",\"answer\":\"O\"|\"X\",\"explanation\":\"...\"}. No extra text.";
+          const usr = `카테고리: ${cat}\n다음 기사 본문을 바탕으로 퀴즈 2개를 생성해줘.\n본문:\n${body}`;
+
+          const res = await fetch("https://api.openai.com/v1/chat/completions",{
+            method:"POST",
+            headers:{
+              "Content-Type":"application/json",
+              "Authorization":`Bearer ${key}`
+            },
+            body: JSON.stringify({
+              model: "gpt-4o-mini",
+              messages: [
+                {role:"system", content: sys},
+                {role:"user", content: usr}
+              ],
+              temperature: 0.4,
+              response_format: { type: "json_object" }
+            })
+          });
+
+          if(!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          const text = data.choices?.[0]?.message?.content || "";
+          const parsed = JSON.parse(text);
+          const out = parsed.quizzes || null;
+          if(!Array.isArray(out) || out.length < 2) return null;
+          return out;
+        }catch(e){
+          console.warn("GPT 호출 실패:", e);
+          return null;
+        }
+      }
+
+      let qs = await generateViaGPT(category, content);
+      if(!qs){
+        qs = dummyQuizzes(category, content, 2);
+      }
+
       createPreviewQuizzes = qs;
       renderQuizCards('createPreview', createPreviewQuizzes, true);
       $('createActions').classList.remove('hidden');
