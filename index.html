@@ -56,7 +56,7 @@
     </div>
 
     <!-- 전체 랭킹 TOP 5 -->
-    <div class="bg-white rounded-xl p-6 shadow-lg max-w-2xl mx-auto mb-8">
+    <div class="bg-white rounded-xl p-6 shadow-lg max-ww-2xl max-w-2xl mx-auto mb-8">
       <h3 class="text-xl font-bold text-gray-800 mb-4 text-center">🏆 전체 랭킹 TOP 5</h3>
       <div id="today-ranking"></div>
     </div>
@@ -191,7 +191,11 @@ placeholder='{
   "카테고리": "아이돌",
   "quizzes": [
     { "question": "문제1", "options": ["보기1","보기2","보기3","보기4"], "correctIndex": 0, "hintUrl": "https://...", "meta": {} },
-    { "question": "문제2", "options": ["보기1","보기2","보기3","보기4"], "correctIndex": 1, "hintUrl": "https://...", "meta": {} }
+    { "question": "문제2", "options": ["보기1","보기2","보기3","보기4"], "correctIndex": 1, "hintUrl": "https://...", "meta": {} },
+    { "question": "문제3", "options": ["보기1","보기2","보기3","보기4"], "correctIndex": 2, "hintUrl": "https://...", "meta": {} },
+    { "question": "문제4", "options": ["보기1","보기2","보기3","보기4"], "correctIndex": 3, "hintUrl": "https://...", "meta": {} },
+    { "question": "문제5", "options": ["보기1","보기2","보기3","보기4"], "correctIndex": 0, "hintUrl": "https://...", "meta": {} },
+    { "question": "문제6", "options": ["보기1","보기2","보기3","보기4"], "correctIndex": 1, "hintUrl": "https://...", "meta": {} }
   ]
 }'></textarea>
           <p class="text-sm text-gray-500 mt-2">※ JSON에 카테고리가 없어도, 목록에서 선택한 카테고리로 업데이트됩니다.</p>
@@ -217,6 +221,7 @@ placeholder='{
       <div class="text-lg font-semibold text-gray-800">SBS연예뉴스</div>
       <div class="text-sm text-gray-600">@yaongc</div>
       <div id="admin-button-container" class="mt-2">
+        <!-- 요청: 기존보다 조금 더 흐리게 -->
         <button onclick="showAdminLogin()" class="text-gray-500 text-xs opacity-55 hover:opacity-90 font-semibold underline underline-offset-2 tracking-wide">admin</button>
       </div>
     </div>
@@ -239,7 +244,7 @@ placeholder='{
     function getSeoulDateString(ts=Date.now()){ return new Date(ts).toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'}); }
 
     // 관리자 로그인(해시)
-    const ADMIN_HASH = '2171ec0b29addbdd39bb33cda59477e88864561275ed1a33f357de2bfb013e13';
+    const ADMIN_HASH = '2171ec0b29addbdd39bb33cda59477e88864561275ed1a33f357de2bfb013e13'; // sbsent|momo1234|ent-admin-v1
     function isAuthed(){ return sessionStorage.getItem('adminAuthed')==='1'; }
     function logoutAdmin(){ sessionStorage.removeItem('adminAuthed'); alert('로그아웃되었습니다.'); goHome(); }
     async function loginAdmin(){
@@ -320,7 +325,7 @@ placeholder='{
       if(screenId==='result-screen'){
         renderTodayRanking('overall-ranking-10', 10);
 
-        // 1) 메모리/세션 캐시 즉시 렌더 시도
+        // 1) 캐시 즉시 렌더
         const mem = loadCachedNews();
         if (mem && mem.length) {
           renderNewsList('news-container', mem);
@@ -328,13 +333,13 @@ placeholder='{
           newsSkeleton('news-container', 5);
         }
 
-        // 2) 퀴즈 시작 시점에 만들어둔 프리패치 Promise를 최대 1200ms까지 기다렸다가 반영
+        // 2) 퀴즈 시작 시 프리패치된 Promise 최대 1200ms 대기 후 반영
         try {
           if (NEWS_PROMISE) {
             const items = await promiseWithTimeout(NEWS_PROMISE, 1200);
             if (Array.isArray(items) && items.length) renderNewsList('news-container', items);
           }
-        } catch(e) { /* 타임아웃은 조용히 무시 */ }
+        } catch(e) {}
 
         // 3) 최신 데이터로 조용히 갱신
         ensureFreshRSS('news-container', 5);
@@ -348,8 +353,8 @@ placeholder='{
       if(!nickname){ alert('닉네임을 입력해주세요!'); return; }
       currentNickname=nickname; currentQuizIndex=0; totalScore=0; correctCount=0;
 
-      // 결과 화면 즉시 노출을 위한 사전 프리패치 시작
-      NEWS_PROMISE = warmRSSCache(); // 글로벌 프라미스에 저장
+      // 결과 화면 즉시 노출 위한 사전 프리패치
+      NEWS_PROMISE = warmRSSCache();
 
       showScreen('quiz-screen'); updateQuizHeader(); loadQuestion();
     }
@@ -477,9 +482,28 @@ placeholder='{
       editingCategory=cat; showScreen('admin-create-screen');
       document.getElementById('admin-create-title').textContent=`퀴즈 업데이트 - ${cat}`;
 
-      const cur=(quizData[cat]||[]).slice(0,2).map(q=>({ question:q.question, options:q.options, correctIndex:q.correct, hintUrl:q.hint||'' }));
-      while(cur.length<2){ cur.push({ question:'새 문제', options:['보기1','보기2','보기3','보기4'], correctIndex:0, hintUrl:'' }); }
-      document.getElementById('admin-quiz-json').value=JSON.stringify({ quizzes:cur }, null, 2);
+      // ✅ 기존 slice(0,2) 제거: 저장된 모든 퀴즈를 로드하고, 편집 화면에서는 최대 6개까지 표시
+      const existingAll = (quizData[cat] || []).map(q => ({
+        question: q.question,
+        options: q.options,
+        correctIndex: q.correct,
+        hintUrl: q.hint || ''
+      }));
+
+      // 최대 6개까지만 사용(요구사항: 6문제 운영)
+      let cur = existingAll.slice(0, 6);
+
+      // 6개보다 적으면 더미로 채워서 항상 6개 보이도록
+      while (cur.length < 6) {
+        cur.push({
+          question: '새 문제',
+          options: ['보기1','보기2','보기3','보기4'],
+          correctIndex: 0,
+          hintUrl: ''
+        });
+      }
+
+      document.getElementById('admin-quiz-json').value = JSON.stringify({ quizzes: cur }, null, 2);
       document.getElementById('preview-area').classList.add('hidden');
       window.scrollTo({ top:0, behavior:'smooth' });
     }
@@ -516,11 +540,12 @@ placeholder='{
       if(!validateQuizJson()) return;
       const p=lastCreateParsed; const category=p.category||editingCategory; if(!category){ showToast('카테고리를 찾을 수 없습니다.', false); return; }
       const regDate=new Date().toISOString();
+      // 등록 시 전달된 quizzes를 모두 반영 (6개든 그 이상이든 저장 가능하지만 운영은 6개 기준)
       quizData[category]=p.quizzes.map((q,i)=>({ id:3000+i, question:q.question, options:q.options, correct:q.correctIndex, hint:q.hintUrl||'', active:true, registrationDate:regDate, meta:q.meta||{} }));
       lastCreateParsed=null; showAdminList(); showToast(`[${category}] 카테고리가 업데이트되었습니다!`);
     }
 
-    /* ---------------- RSS 초고속: 프리패치 → 즉시 렌더 ---------------- */
+    /* ---------------- RSS 프리패치 → 즉시 렌더 ---------------- */
     const RSS_URL='https://ent.sbs.co.kr/news/xml/RSSFeed.do';
     const PROXY_ALLORIGINS_JSON='https://api.allorigins.win/get?url='+encodeURIComponent(RSS_URL); // JSON{ contents }
     const PROXY_ALLORIGINS_RAW='https://api.allorigins.win/raw?url='+encodeURIComponent(RSS_URL);  // 순수 텍스트
