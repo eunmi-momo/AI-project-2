@@ -1,929 +1,653 @@
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>오늘의 연예뉴스 퀴즈</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>연예 퀴즈팡</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- RSS 프록시 사전 연결 -->
+  <link rel="preconnect" href="https://api.allorigins.win" crossorigin>
+  <link rel="preconnect" href="https://api.codetabs.com" crossorigin>
+  <link rel="preconnect" href="https://r.jina.ai" crossorigin>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
     body { font-family: 'Noto Sans KR', sans-serif; }
-    .tooltip { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; animation: fadeInOut 1.2s ease-in-out;}
-    @keyframes fadeInOut { 0%{opacity:0;transform:translate(-50%,-50%) scale(.92)} 20%{opacity:1;transform:translate(-50%,-50%) scale(1)} 80%{opacity:1} 100%{opacity:0;transform:translate(-50%,-50%) scale(.98)}}
-    .category-btn{transition:all .3s} .category-btn:hover{transform:translateY(-2px); box-shadow:0 8px 25px rgba(0,0,0,.15)}
-    .quiz-option{transition:all .2s} .quiz-option:hover{transform:translateX(5px)}
-    .kb{word-break:keep-all}
-    /* 관리자: 카드/테이블 경계 */
-    .card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.06)}
-    .input{width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;background:#fff}
-    .badge{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px}
-    .badge.on{background:#dcfce7;color:#166534}.badge.off{background:#fee2e2;color:#991b1b}
-    .table-wrap{overflow:auto}
+    .quiz-card { transition: all 0.3s ease; }
+    .quiz-card:hover { transform: translateY(-2px); }
+    .progress-bar { transition: width 0.5s ease; }
+    .tooltip { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .medal-gold { color: #FFD700; }
+    .medal-silver { color: #C0C0C0; }
+    .medal-bronze { color: #CD7F32; }
+    .skeleton { position: relative; overflow: hidden; background: #f3f4f6; }
+    .skeleton::after { content: ''; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(0,0,0,.04), transparent); animation: shimmer 1.2s infinite; }
+    @keyframes shimmer { 100% { transform: translateX(100%); } }
   </style>
 </head>
 <body class="bg-gradient-to-br from-purple-50 to-pink-50 min-h-screen">
-  <!-- 공통 헤더 -->
-  <header class="sticky top-0 z-20 bg-gradient-to-r from-indigo-600 to-fuchsia-500 text-white shadow">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-      <div class="font-extrabold tracking-tight">🎬 오늘의 연예뉴스 퀴즈</div>
-      <div class="flex items-center gap-2">
-        <button id="btnGoAdmin" class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm font-semibold">관리자</button>
-        <button id="btnGoUser" class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm font-semibold hidden">사용자</button>
-      </div>
-    </div>
-  </header>
-
-  <!-- ================= 사용자 영역 ================= -->
   <!-- 홈 화면 -->
-  <div id="homeScreen" class="container mx-auto px-4 py-8">
-    <div class="text-center mb-10">
-      <h1 class="text-3xl sm:text-4xl font-bold text-gray-800 mb-3">🎬 오늘의 연예뉴스 퀴즈 풀기! 🎭</h1>
-      <p class="text-base sm:text-lg text-gray-600">뉴스 속 정답을 찾아라!</p>
+  <div id="home-screen" class="container mx-auto px-4 py-8">
+    <div class="text-center mb-12">
+      <h1 class="text-5xl font-bold text-purple-800 mb-2">연예 퀴즈팡</h1>
+      <p class="text-xl text-gray-600 opacity-80">기사 속 정답을 찾아라!</p>
     </div>
 
-    <div class="max-w-2xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-6">
-      <button onclick="startQuiz('방송')" class="category-btn bg-gradient-to-r from-blue-500 to-blue-600 text-white p-8 rounded-2xl shadow-lg hover:shadow-xl">
-        <div class="text-4xl mb-3">📺</div><div class="text-xl font-semibold">방송</div>
-      </button>
-      <button onclick="startQuiz('영화')" class="category-btn bg-gradient-to-r from-red-500 to-red-600 text-white p-8 rounded-2xl shadow-lg hover:shadow-xl">
-        <div class="text-4xl mb-3">🎬</div><div class="text-xl font-semibold">영화</div>
-      </button>
-      <button onclick="startQuiz('뮤직')" class="category-btn bg-gradient-to-r from-green-500 to-green-600 text-white p-8 rounded-2xl shadow-lg hover:shadow-xl">
-        <div class="text-4xl mb-3">🎵</div><div class="text-xl font-semibold">뮤직</div>
-      </button>
-      <button onclick="startQuiz('스타')" class="category-btn bg-gradient-to-r from-yellow-500 to-yellow-600 text-white p-8 rounded-2xl shadow-lg hover:shadow-xl">
-        <div class="text-4xl mb-3">⭐</div><div class="text-xl font-semibold">스타</div>
-      </button>
-    </div>
-
-    <!-- 참여자 수 카드 -->
-    <div class="max-w-md mx-auto mt-8">
-      <div class="bg-white rounded-2xl shadow p-5">
-        <h3 class="text-lg font-bold text-gray-800 mb-1">📊 지금까지 참여한 사람</h3>
-        <p class="text-gray-800 font-semibold">총 <span id="totalParticipants" class="text-purple-600 font-bold">0</span>명</p>
+    <!-- 카테고리 -->
+    <div class="max-w-4xl mx-auto mb-12">
+      <div class="grid grid-cols-3 gap-6 mb-6">
+        <button onclick="selectCategory('아이돌')" class="quiz-card bg-gradient-to-r from-pink-400 to-purple-500 text-white p-8 rounded-2xl shadow-lg hover:shadow-xl"><div class="text-3xl mb-2">🎤</div><div class="text-xl font-semibold">아이돌</div></button>
+        <button onclick="selectCategory('드라마')" class="quiz-card bg-gradient-to-r from-blue-400 to-indigo-500 text-white p-8 rounded-2xl shadow-lg hover:shadow-xl"><div class="text-3xl mb-2">📺</div><div class="text-xl font-semibold">드라마</div></button>
+        <button onclick="selectCategory('영화')" class="quiz-card bg-gradient-to-r from-green-400 to-teal-500 text-white p-8 rounded-2xl shadow-lg hover:shadow-xl"><div class="text-3xl mb-2">🎬</div><div class="text-xl font-semibold">영화</div></button>
+      </div>
+      <div class="grid grid-cols-3 gap-6">
+        <button onclick="selectCategory('예능')" class="quiz-card bg-gradient-to-r from-orange-400 to-red-500 text-white p-8 rounded-2xl shadow-lg hover:shadow-xl"><div class="text-3xl mb-2">🎪</div><div class="text-xl font-semibold">예능</div></button>
+        <button onclick="selectCategory('스타')" class="quiz-card bg-gradient-to-r from-yellow-400 to-orange-500 text-white p-8 rounded-2xl shadow-lg hover:shadow-xl"><div class="text-3xl mb-2">⭐</div><div class="text-xl font-semibold">스타</div></button>
+        <button onclick="selectCategory('해외')" class="quiz-card bg-gradient-to-r from-purple-400 to-pink-500 text-white p-8 rounded-2xl shadow-lg hover:shadow-xl"><div class="text-3xl mb-2">🌍</div><div class="text-xl font-semibold">해외</div></button>
       </div>
     </div>
 
-    <!-- 홈 랭킹 보드 (TOP 5) -->
-    <div class="max-w-md mx-auto mt-4">
-      <div class="bg-white rounded-2xl shadow p-5">
-        <h3 class="text-lg font-bold text-gray-800 mb-3">🏆 오늘의 랭킹 TOP 5</h3>
-        <div id="homeRankingBoard" class="space-y-2 text-gray-600">아직 랭킹 데이터가 없습니다.</div>
+    <!-- 누적 참여수 -->
+    <div class="text-center mb-12">
+      <div class="bg-white rounded-xl p-6 shadow-lg max-w-md mx-auto">
+        <h3 class="text-lg font-semibold text-gray-700 mb-2">누적 참여수</h3>
+        <div class="text-3xl font-bold text-purple-600" id="total-participants">1,000명</div>
       </div>
     </div>
 
-    <div class="text-center mt-12 text-gray-500 font-bold">SBS연예뉴스 - @yaongc</div>
-  </div>
-
-  <!-- 닉네임 입력 화면 -->
-  <div id="nicknameScreen" class="container mx-auto px-4 py-8 hidden">
-    <div class="max-w-md mx-auto">
-      <div class="text-center mb-5">
-        <button onclick="goHome()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors mb-4">← 홈으로</button>
-        <h2 id="selectedCategory" class="text-2xl sm:text-3xl font-bold text-gray-800 mb-2"></h2>
-        <p class="text-gray-600">닉네임을 입력해 주세요</p>
-      </div>
-      <div class="bg-white rounded-2xl shadow-xl p-6">
-        <input id="nicknameInput" type="text" maxlength="10" placeholder="닉네임을 입력하세요"
-               class="w-full p-4 border-2 border-gray-200 rounded-lg text-lg focus:border-purple-500 focus:outline-none mb-4">
-        <button onclick="startQuizWithNickname()" class="w-full bg-purple-500 hover:bg-purple-600 text-white py-3 rounded-lg font-semibold">퀴즈 시작하기</button>
-      </div>
-    </div>
-    <div class="text-center mt-12 text-gray-500 font-bold">SBS연예뉴스</div>
-  </div>
-
-  <!-- 퀴즈 화면 -->
-  <div id="quizScreen" class="container mx-auto px-4 py-8 hidden">
-    <div class="max-w-3xl mx-auto">
-      <div class="flex justify-between items-center mb-6" id="quizHeaderRow">
-        <button onclick="goHome()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors">← 홈으로</button>
-        <div class="text-center">
-          <h2 id="categoryTitle" class="text-xl sm:text-2xl font-bold text-gray-800"></h2>
-          <p id="questionCounter" class="text-gray-600 mt-1" style="display:none;"></p>
-        </div>
-        <div class="w-16"></div>
-      </div>
-
-      <!-- 프로그레스 바 -->
-      <div class="mb-6" id="quizProgressWrap">
-        <div class="bg-gray-200 rounded-full h-3">
-          <div id="progressBar" class="bg-purple-500 h-3 rounded-full transition-all duration-500" style="width:0%"></div>
-        </div>
-        <div class="text-center mt-1">
-          <span id="progressText" class="text-sm text-gray-600"></span>
-        </div>
-      </div>
-
-      <div class="bg-white rounded-2xl shadow-xl p-6 mb-6" id="quizMainBox">
-        <div class="flex justify-between items-start mb-4">
-          <h3 id="questionText" class="text-lg sm:text-xl font-semibold text-gray-800 flex-1 mr-3 kb"></h3>
-          <button id="hintBtn" onclick="showHint()" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm whitespace-nowrap">💡 힌트보기</button>
-        </div>
-        <div id="optionsContainer" class="space-y-3"></div>
-      </div>
+    <!-- 전체 랭킹 TOP 5 -->
+    <div class="bg-white rounded-xl p-6 shadow-lg max-w-2xl mx-auto mb-8">
+      <h3 class="text-xl font-bold text-gray-800 mb-4 text-center">🏆 전체 랭킹 TOP 5</h3>
+      <div id="today-ranking"></div>
     </div>
   </div>
 
-  <!-- ================= 관리자 영역 ================= -->
-  <div id="adminWrap" class="max-w-6xl mx-auto px-4 py-8 hidden">
-    <!-- 로그인 -->
-    <section id="loginScreen" class="card p-5">
-      <h2 class="text-xl font-extrabold text-gray-800 mb-4">관리자 로그인</h2>
-      <form id="loginForm" class="space-y-3">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="text-xs text-gray-500">아이디</label>
-            <input id="loginId" autocomplete="username" class="input" />
-          </div>
-          <div>
-            <label class="text-xs text-gray-500">비밀번호</label>
-            <input id="loginPw" type="password" autocomplete="current-password" class="input" />
-          </div>
-        </div>
-        <div>
-          <button class="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold" id="loginBtn" type="submit">로그인</button>
-        </div>
-      </form>
-    </section>
-
-    <!-- 목록 -->
-    <section id="listScreen" class="card p-5 hidden">
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="text-xl font-extrabold text-gray-800">기사 목록</h2>
-        <div class="flex items-center gap-3">
-          <label class="text-sm text-gray-600"><input type="checkbox" id="filterActive" class="mr-1"> 사용 중만 보기</label>
-          <button id="createQuizBtn" class="px-4 py-2 rounded-lg bg-white border border-gray-300 hover:bg-gray-50">퀴즈 만들기</button>
-          <button id="settingsBtn" class="px-3 py-2 rounded-lg bg-white border border-gray-300 hover:bg-gray-50">설정</button>
-          <button id="logoutBtn" class="px-3 py-2 rounded-lg bg-gray-700 text-white">로그아웃</button>
-        </div>
+  <!-- 닉네임 입력 -->
+  <div id="nickname-screen" class="hidden container mx-auto px-4 py-8">
+    <div class="flex justify-start mb-6">
+      <button onclick="goHome()" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg transition-colors">🏠 홈으로</button>
+    </div>
+    <div class="max-w-md mx-auto bg-white rounded-xl p-8 shadow-lg">
+      <h2 class="text-2xl font-bold text-center mb-6 text-purple-800">닉네임을 입력해주세요</h2>
+      <div class="mb-6">
+        <input id="nickname-input" type="text" placeholder="닉네임을 입력하세요" class="w-full p-4 border-2 border-purple-200 rounded-lg focus:border-purple-500 focus:outline-none text-lg"/>
       </div>
-
-      <div class="table-wrap">
-        <table class="min-w-full text-sm">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="text-left p-3">제목</th>
-              <th class="text-left p-3">카테고리</th>
-              <th class="text-left p-3">사용</th>
-              <th class="text-left p-3">삭제</th>
-            </tr>
-          </thead>
-          <tbody id="quizList"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- 설정 -->
-    <section id="settingsScreen" class="card p-5 hidden">
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="text-xl font-extrabold text-gray-800">설정</h2>
-        <button id="backToListBtnSettings" class="px-3 py-2 rounded-lg bg-gray-600 text-white">뒤로가기</button>
-      </div>
-
-      <div class="space-y-3">
-        <label class="text-sm font-semibold text-gray-700">ChatGPT API Key</label>
-        <input id="gptApiKeyInput" type="password" placeholder="sk-..." class="input" />
-        <div class="text-xs text-gray-500">* 이 키는 브라우저 localStorage에만 저장됩니다. 운영환경은 백엔드 프록시 권장.</div>
-        <button id="saveGptKeyBtn" class="mt-2 px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold">저장</button>
-      </div>
-    </section>
-
-    <!-- 생성 -->
-    <section id="createScreen" class="card p-5 hidden">
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="text-xl font-extrabold text-gray-800">퀴즈 만들기</h2>
-        <button id="backToListBtn1" class="px-3 py-2 rounded-lg bg-gray-600 text-white">뒤로가기</button>
-      </div>
-
-      <!-- 사용 여부 토글: 라벨과 밀착 -->
-      <div class="bg-slate-50 border border-gray-200 rounded-xl p-3 mb-3">
-        <div class="flex items-center gap-3">
-          <div class="text-sm font-semibold">사용 여부</div>
-          <label class="inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="createUse" class="sr-only peer" checked>
-            <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-green-500 transition"></div>
-            <div class="w-5 h-5 bg-white rounded-full -ml-9 translate-x-0 peer-checked:translate-x-5 transition shadow"></div>
-          </label>
-        </div>
-        <div class="text-xs text-gray-500 mt-1">목록/서비스 노출</div>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div>
-          <label class="text-xs text-gray-500">카테고리</label>
-          <select id="createCategory" class="input">
-            <option>방송</option><option>영화</option><option>뮤직</option><option>스타</option>
-          </select>
-        </div>
-        <div class="md:col-span-2">
-          <label class="text-xs text-gray-500">제목</label>
-          <input id="createTitle" class="input" />
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-        <div>
-          <label class="text-xs text-gray-500">URL</label>
-          <input id="createUrl" class="input" placeholder="https://..." />
-        </div>
-        <div>
-          <label class="text-xs text-gray-500">본문 (최대 3000자)</label>
-          <textarea id="createContent" class="input" maxlength="3000" rows="6"></textarea>
-        </div>
-      </div>
-
-      <div class="flex items-center justify-between mt-3">
-        <p class="text-sm text-gray-500">본문에서 객관식/주관식(OX 포함) 2개 생성</p>
-        <button id="createGenerate" class="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold">퀴즈 2개 생성</button>
-      </div>
-
-      <h3 class="mt-4 font-bold">생성된 퀴즈 (선택 후 등록/재생성)</h3>
-      <div id="createPreview" class="mt-2 space-y-2"></div>
-      <div id="createActions" class="flex items-center justify-end gap-2 mt-3 hidden">
-        <button id="createRegister" class="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold">등록하기</button>
-        <button id="createRegen" class="px-4 py-2 rounded-lg bg-gray-100 border">다시 생성</button>
-      </div>
-    </section>
-
-    <!-- 편집 (생성 화면과 동일 UI) -->
-    <section id="editScreen" class="card p-5 hidden">
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="text-xl font-extrabold text-gray-800">기사 편집</h2>
-        <button id="backToListBtn2" class="px-3 py-2 rounded-lg bg-gray-600 text-white">뒤로가기</button>
-      </div>
-
-      <!-- 사용 여부 토글: 라벨 옆 밀착 + 상단 배치 -->
-      <div class="bg-slate-50 border border-gray-200 rounded-xl p-3 mb-3">
-        <div class="flex items-center gap-3">
-          <div class="text-sm font-semibold">사용 여부</div>
-          <label class="inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="editUse" class="sr-only peer">
-            <div class="w-11 h-6 bg-gray-300 rounded-full peer peer-checked:bg-green-500 transition"></div>
-            <div class="w-5 h-5 bg-white rounded-full -ml-9 translate-x-0 peer-checked:translate-x-5 transition shadow"></div>
-          </label>
-        </div>
-        <div class="text-xs text-gray-500 mt-1">목록/서비스 노출</div>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div>
-          <label class="text-xs text-gray-500">카테고리</label>
-          <select id="editCategory" class="input">
-            <option>방송</option><option>영화</option><option>뮤직</option><option>스타</option>
-          </select>
-        </div>
-        <div class="md:col-span-2">
-          <label class="text-xs text-gray-500">제목</label>
-          <input id="editTitle" class="input" />
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-        <div>
-          <label class="text-xs text-gray-500">URL</label>
-          <input id="editUrl" class="input" />
-        </div>
-        <div>
-          <label class="text-xs text-gray-500">본문</label>
-          <textarea id="editContent" class="input" maxlength="3000" rows="6"></textarea>
-        </div>
-      </div>
-
-      <h3 class="mt-4 font-bold">현재 적용된 퀴즈</h3>
-      <div id="appliedList" class="mt-2 space-y-2"></div>
-
-      <div class="flex items-center justify-between mt-3">
-        <button id="editRegenSelected" class="px-4 py-2 rounded-lg bg-gray-100 border">선택 퀴즈 다시 생성</button>
-        <button id="saveArticleBtn" class="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold">저장</button>
-      </div>
-    </section>
+      <button onclick="startQuiz()" class="w-full bg-purple-500 text-white py-4 rounded-lg text-lg font-semibold hover:bg-purple-600 transition-colors">퀴즈 시작하기</button>
+    </div>
   </div>
+
+  <!-- 퀴즈 풀기 -->
+  <div id="quiz-screen" class="hidden container mx-auto px-4 py-8">
+    <div class="flex items-center justify-between mb-6">
+      <button onclick="goHome()" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg transition-colors">🏠 홈으로</button>
+      <h2 class="text-xl font-semibold text-purple-800" id="quiz-header">아이돌 퀴즈 - 닉네임</h2>
+      <div></div>
+    </div>
+
+    <div class="mb-8">
+      <div class="w-full bg-gray-200 rounded-full h-3">
+        <div class="progress-bar bg-purple-500 h-3 rounded-full" id="progress-bar" style="width: 16.67%"></div>
+      </div>
+      <div class="text-center mt-2">
+        <span class="text-sm text-gray-600 font-medium" id="progress-text">1/6</span>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl p-8 shadow-lg mb-6">
+      <div class="flex items-start justify-between mb-6">
+        <h3 class="text-xl font-semibold text-gray-800 flex-1" id="question-text">문제가 여기에 표시됩니다.</h3>
+        <button onclick="showHint()" class="bg-yellow-400 hover:bg-yellow-500 text-white px-4 py-2 rounded-lg ml-4 transition-colors">💡 힌트보기</button>
+      </div>
+      <div class="space-y-3" id="options-container"></div>
+    </div>
+
+    <div id="answer-tooltip" class="hidden fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 px-6 py-3 rounded-lg text-white font-semibold text-lg z-50"></div>
+  </div>
+
+  <!-- 결과 화면 -->
+  <div id="result-screen" class="hidden container mx-auto px-4 py-8">
+    <div class="text-center mb-8">
+      <h2 class="text-3xl font-bold text-purple-800 mb-4" id="result-title">아이돌 퀴즈 풀기 완료!</h2>
+      <div class="text-2xl font-semibold text-gray-700 mb-2" id="result-score">닉네임님의 점수: 85점 (정답 5/6)</div>
+      <div class="text-lg text-gray-600" id="result-message">훌륭해요! 연예계 소식에 관심이 많으시네요! 🌟</div>
+    </div>
+
+    <div class="flex justify-center space-x-4 mb-12">
+      <button onclick="retryQuiz()" class="bg-purple-500 hover:bg-purple-600 text-white px-8 py-3 rounded-lg font-semibold transition-colors">다시 풀기</button>
+      <button onclick="goHome()" class="bg-gray-500 hover:bg-gray-600 text-white px-8 py-3 rounded-lg font-semibold transition-colors">홈으로 가기</button>
+    </div>
+
+    <!-- 전체 랭킹 TOP 10 -->
+    <div class="bg-white rounded-xl p-6 shadow-lg max-w-2xl mx-auto mb-8">
+      <h3 class="text-xl font-bold text-gray-800 mb-4 text-center">🏆 전체 랭킹 TOP 10</h3>
+      <div id="overall-ranking-10"></div>
+    </div>
+
+    <!-- 실시간 추천 뉴스 -->
+    <div class="bg-white rounded-xl p-6 shadow-lg max-w-2xl mx-auto">
+      <h3 class="text-xl font-bold text-gray-800 mb-4">📰 실시간 추천 뉴스</h3>
+      <div id="news-container" class="space-y-4"></div>
+    </div>
+  </div>
+
+  <!-- 관리자 로그인 -->
+  <div id="admin-login-screen" class="hidden container mx-auto px-4 py-12">
+    <div class="max-w-sm mx-auto bg-white rounded-xl p-8 shadow-lg">
+      <h2 class="text-2xl font-bold text-center mb-6 text-purple-800">관리자 로그인</h2>
+      <div class="space-y-4">
+        <div><label class="block text-sm text-gray-700 mb-1">아이디</label><input id="admin-login-id" type="text" class="w-full p-3 border border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none" placeholder="아이디"/></div>
+        <div><label class="block text-sm text-gray-700 mb-1">비밀번호</label><input id="admin-login-pw" type="password" class="w-full p-3 border border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none" placeholder="비밀번호"/></div>
+        <button onclick="loginAdmin()" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-semibold transition-colors">로그인</button>
+        <button onclick="goHome()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 rounded-lg font-semibold transition-colors">홈으로</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 관리자 목록 -->
+  <div id="admin-screen" class="hidden container mx-auto px-4 py-8">
+    <div class="max-w-6xl mx-auto">
+      <div class="flex items-center justify-between mb-8">
+        <h2 class="text-3xl font-bold text-purple-800">관리자 페이지</h2>
+        <div class="flex items-center gap-2">
+          <button onclick="logoutAdmin()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-2 rounded-lg transition-colors">로그아웃</button>
+          <button onclick="goHome()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors">홈으로</button>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl p-8 shadow-lg">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-xl font-semibold">카테고리별 퀴즈 관리</h3>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse border border-gray-300">
+            <thead>
+              <tr class="bg-gray-50">
+                <th class="border border-gray-300 px-4 py-3 text-left">카테고리</th>
+                <th class="border border-gray-300 px-4 py-3 text-center">퀴즈 개수</th>
+                <th class="border border-gray-300 px-4 py-3 text-center">최근 수정일시</th>
+                <th class="border border-gray-300 px-4 py-3 text-center">작업</th>
+              </tr>
+            </thead>
+            <tbody id="category-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 관리자 카테고리 업데이트 -->
+  <div id="admin-create-screen" class="hidden container mx-auto px-4 py-8">
+    <div class="max-w-4xl mx-auto">
+      <div class="flex items-center justify-between mb-8">
+        <h2 id="admin-create-title" class="text-3xl font-bold text-purple-800">퀴즈 업데이트</h2>
+        <button onclick="showAdminList()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors">뒤로가기</button>
+      </div>
+
+      <div class="bg-white rounded-xl p-8 shadow-lg">
+        <div class="mb-6">
+          <label class="block text-sm font-medium text-gray-700 mb-2">퀴즈 데이터 (JSON only, 4지선다)</label>
+          <textarea id="admin-quiz-json" rows="15" class="w-full p-3 border border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none font-mono text-sm"
+placeholder='{
+  "카테고리": "아이돌",
+  "quizzes": [
+    { "question": "문제1", "options": ["보기1","보기2","보기3","보기4"], "correctIndex": 0, "hintUrl": "https://...", "meta": {} },
+    { "question": "문제2", "options": ["보기1","보기2","보기3","보기4"], "correctIndex": 1, "hintUrl": "https://...", "meta": {} }
+  ]
+}'></textarea>
+          <p class="text-sm text-gray-500 mt-2">※ JSON에 카테고리가 없어도, 목록에서 선택한 카테고리로 업데이트됩니다.</p>
+        </div>
+
+        <div class="flex justify-end space-x-4">
+          <button onclick="validateQuizJson()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors">검증</button>
+          <button onclick="previewQuiz()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors">미리보기</button>
+          <button onclick="registerQuizGroup()" class="bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors">등록하기</button>
+        </div>
+
+        <div id="preview-area" class="hidden mt-8 p-6 bg-gray-50 rounded-lg">
+          <h4 class="text-lg font-semibold mb-4">퀴즈 미리보기</h4>
+          <div id="preview-content"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 푸터 -->
+  <footer class="bg-white border-t mt-16 py-6">
+    <div class="container mx-auto px-4 text-center">
+      <div class="text-lg font-semibold text-gray-800">SBS연예뉴스</div>
+      <div class="text-sm text-gray-600">@yaongc</div>
+      <div id="admin-button-container" class="mt-2">
+        <button onclick="showAdminLogin()" class="text-gray-500 text-xs opacity-55 hover:opacity-90 font-semibold underline underline-offset-2 tracking-wide">admin</button>
+      </div>
+    </div>
+  </footer>
 
   <script>
-    /* ===================== 공통/상태 ===================== */
-    const VALID_ID='sbsent', VALID_PW='momo1234';
-    const STORAGE_KEY = 'qa_articles';
+    /* ---------------- 공통 상태 ---------------- */
+    let currentCategory = '';
+    let currentNickname = '';
+    let currentQuizIndex = 0;
+    let totalParticipants = 1000;
 
-    // (사용자 제공) 인기뉴스 TOP10 원제목/원링크 그대로. 지금은 5개지만 10개로 계속 확장 가능.
-    const popularArticlesTop10 = [
-      { title: '홍진경, 결혼 22년 만에 이혼…"남이 된 후 진짜 우정 되찾아"', url: 'https://ent.sbs.co.kr/m/article.do?article_id=E10010304723' },
-      { title: '애즈원 이민, 자택서 사망 확인...크리스탈 급거 귀국', url: 'https://ent.sbs.co.kr/m/article.do?article_id=E10010304730' },
-      { title: "'사마귀' 고현정, 사형수 됐다…남자 5명 죽인 잔혹한 연쇄살인마 파격 변신", url: 'https://ent.sbs.co.kr/m/article.do?article_id=E10010304767' },
-      { title: '이수근, 가슴저린 부친상..."유년기 단둘이 지낸 애틋한 아버지"', url: 'https://ent.sbs.co.kr/m/article.do?article_id=E10010304696' },
-      { title: '홍진경, 이혼 뒤늦게 밝힌 이유..."좋은 부모가 되기 위한 노력"', url: 'https://ent.sbs.co.kr/m/article.do?article_id=E10010304760' },
-      // 필요 시 여기 뒤에 5개 더 추가하면 자동으로 랜덤 5개 노출됨
-    ];
+    const scoringWeights = [17,17,17,17,16,16];
+    let totalScore = 0;
+    let correctCount = 0;
 
-    const $ = (id)=>document.getElementById(id);
-    function show(el){ el.classList.remove('hidden'); }
-    function hide(el){ el.classList.add('hidden'); }
+    const PARTICIPANTS_KEY = 'ent_participants_v1';
+    function loadParticipants(){ try { return JSON.parse(localStorage.getItem(PARTICIPANTS_KEY)||'[]'); } catch { return []; } }
+    function saveParticipant(rec){ const l=loadParticipants(); l.push(rec); localStorage.setItem(PARTICIPANTS_KEY, JSON.stringify(l)); }
+    function getSeoulDateString(ts=Date.now()){ return new Date(ts).toLocaleDateString('sv-SE',{timeZone:'Asia/Seoul'}); }
 
-    function readArticles(){
-      try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]'); }catch{ return []; }
+    // 관리자 로그인(해시)
+    const ADMIN_HASH = '2171ec0b29addbdd39bb33cda59477e88864561275ed1a33f357de2bfb013e13';
+    function isAuthed(){ return sessionStorage.getItem('adminAuthed')==='1'; }
+    function logoutAdmin(){ sessionStorage.removeItem('adminAuthed'); alert('로그아웃되었습니다.'); goHome(); }
+    async function loginAdmin(){
+      const id=(document.getElementById('admin-login-id').value||'').trim();
+      const pw=(document.getElementById('admin-login-pw').value||'').trim();
+      if(!id||!pw){ alert('아이디와 비밀번호를 입력하세요.'); return; }
+      const txt=`${id}|${pw}|ent-admin-v1`;
+      const enc=new TextEncoder().encode(txt);
+      const buf=await crypto.subtle.digest('SHA-256', enc);
+      const hashHex=Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+      if(hashHex===ADMIN_HASH){ sessionStorage.setItem('adminAuthed','1'); showAdminPage(); }
+      else { alert('아이디 또는 비밀번호가 올바르지 않습니다.'); }
     }
-    function writeArticles(list){ localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
 
-    /* ===================== 사용자 로직 ===================== */
-    // 기존 더미 퀴즈(보충용)
-    const quizData = { 
-      '방송': [
-        { question: "SBS '궁금한 이야기Y'에서 다룬 한강 괴물 목격담에서, 목격자가 본 생명체의 길이는 얼마나 되었을까요?", options: ["5미터", "10미터", "15미터", "20미터"], correct: 1, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304831" },
-        { question: "'궁금한 이야기Y'는 언제 방송되나요?", options: ["목요일 밤 8시 50분", "금요일 밤 8시 50분", "토요일 밤 8시 50분", "일요일 밤 8시 50분"], correct: 1, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304831" },
-        { question: "SBS '트라이'에서 다루는 스포츠는 무엇인가요?", options: ["축구", "농구", "럭비", "야구"], correct: 2, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304783" },
-        { question: "SBS '트라이'의 주인공들이 도전하는 목표는 무엇인가요?", options: ["전국체전 우승", "올림픽 출전", "프로리그 진출", "세계선수권 출전"], correct: 0, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304783" },
-        { question: "이경규의 새 예능 '마이 턴'의 소재는 무엇인가요?", options: ["요리 경연", "트롯돌 프로젝트", "여행 버라이어티", "게임 쇼"], correct: 1, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304788" },
-        { question: "'마이 턴'에 출연하는 출연자는 몇 명인가요?", options: ["5명", "6명", "7명", "8명"], correct: 2, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304788" }
+    /* ---------------- 샘플 퀴즈 데이터 ---------------- */
+    const quizData = {
+      '아이돌': [
+        { id:1, question:'BTS의 리더는 누구인가요?', options:['RM','진','슈가','J-Hope'], correct:0, hint:'https://ent.sbs.co.kr', active:true, registrationDate:'2024-01-01T00:00:00.000Z' },
+        { id:2, question:'블랙핑크의 멤버가 아닌 사람은?', options:['지수','제니','로제','아이린'], correct:3, hint:'https://ent.sbs.co.kr', active:true, registrationDate:'2024-01-02T00:00:00.000Z' },
+        { id:3, question:'NewJeans의 데뷔곡은?', options:['Attention','Hype Boy','Cookie','Hurt'], correct:0, hint:'https://ent.sbs.co.kr', active:true, registrationDate:'2024-01-03T00:00:00.000Z' },
+        { id:4, question:'IVE의 리더는 누구인가요?', options:['안유진','가을','레이','리즈'], correct:0, hint:'https://ent.sbs.co.kr', active:true, registrationDate:'2024-01-04T00:00:00.000Z' },
+        { id:5, question:'aespa의 소속사는?', options:['JYP','SM','YG','HYBE'], correct:1, hint:'https://ent.sbs.co.kr', active:true, registrationDate:'2024-01-05T00:00:00.000Z' },
+        { id:6, question:'(여자)아이들의 리더는?', options:['미연','민니','소연','우기'], correct:2, hint:'https://ent.sbs.co.kr', active:true, registrationDate:'2024-01-06T00:00:00.000Z' }
+      ],
+      '드라마': [
+        { question:'2023년 최고 시청률을 기록한 드라마는?', options:['더 글로리','이상한 변호사 우영우','재벌집 막내아들','슬의생2'], correct:2, hint:'https://ent.sbs.co.kr' },
+        { question:'박서준이 주연한 드라마가 아닌 것은?', options:['이태원 클라쓰','김비서가 왜 그럴까','쌈 마이웨이','사랑의 불시착'], correct:3, hint:'https://ent.sbs.co.kr' },
+        { question:'SKY 캐슬의 배경이 되는 지역은?', options:['강남구','서초구','송파구','강서구'], correct:0, hint:'https://ent.sbs.co.kr' },
+        { question:'오징어 게임의 주인공 이름은?', options:['기훈','상우','덕수','일남'], correct:0, hint:'https://ent.sbs.co.kr' },
+        { question:'사랑의 불시착에서 현빈의 직업은?', options:['의사','군인','사업가','변호사'], correct:1, hint:'https://ent.sbs.co.kr' },
+        { question:'펜트하우스의 배경이 되는 아파트 이름은?', options:['헤라팰리스','올림푸스','아테나','제우스'], correct:0, hint:'https://ent.sbs.co.kr' }
       ],
       '영화': [
-        { question: "'극장판 귀멸의 칼날: 무한성편'의 개봉 2주 전 예매량은 얼마나 되었을까요?", options: ["20만 장", "23만 장", "25만 장", "30만 장"], correct: 1, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304850" },
-        { question: "'극장판 귀멸의 칼날: 무한성편'은 언제 개봉하나요?", options: ["8월 15일", "8월 20일", "8월 22일", "8월 25일"], correct: 2, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304850" },
-        { question: "iPhone 16 Pro로 촬영된 단편 영화 '백! 스테이지'의 러닝타임은?", options: ["18분", "20분", "22분", "25분"], correct: 2, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304852" },
-        { question: "'백! 스테이지'의 주연 배우는 누구인가요?", options: ["ATEEZ 윤호", "ATEEZ 홍중", "ATEEZ 성화", "ATEEZ 우영"], correct: 0, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304852" },
-        { question: "영화 '좀비딸'이 개봉 6일 만에 돌파한 관객 수는?", options: ["150만", "200만", "250만", "300만"], correct: 1, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304846" },
-        { question: "'좀비딸'에서 신스틸러 역할을 하는 고양이의 이름은?", options: ["애용이", "사랑이", "귀염이", "예쁨이"], correct: 0, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304846" }
+        { question:'기생충의 감독은?', options:['봉준호','박찬욱','김지운','이창동'], correct:0, hint:'https://ent.sbs.co.kr' },
+        { question:'2023년 한국 영화 관객수 1위는?', options:['범죄도시3','스즈메의 문단속','가디언즈 오브 갤럭시3','분노의 질주10'], correct:0, hint:'https://ent.sbs.co.kr' },
+        { question:'마동석이 출연하지 않은 영화는?', options:['범죄도시','부산행','악인전','타짜3'], correct:3, hint:'https://ent.sbs.co.kr' },
+        { question:'칸 영화제 황금종려상을 받은 한국 영화는?', options:['올드보이','기생충','아가씨','버닝'], correct:1, hint:'https://ent.sbs.co.kr' },
+        { question:'송강호가 출연하지 않은 영화는?', options:['기생충','괴물','살인의 추억','신과함께'], correct:3, hint:'https://ent.sbs.co.kr' },
+        { question:'박찬욱 감독의 작품이 아닌 것은?', options:['올드보이','아가씨','헤어질 결심','곡성'], correct:3, hint:'https://ent.sbs.co.kr' }
       ],
-      '뮤직': [
-        { question: "선미의 이번 컴백은 이전 싱글 'Balloon in Love' 발표 후 얼마 만인가요?", options: ["6개월 만", "1년 만", "1년 2개월 만", "1년 6개월 만"], correct: 2, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304833" },
-        { question: "선미의 신곡은 언제 공개되나요?", options: ["8월 24일 오후 6시", "8월 25일 오후 6시", "8월 26일 오후 6시", "8월 27일 오후 6시"], correct: 2, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304833" },
-        { question: "아이유의 팬밋업 'Bye, Summer'가 개최되는 장소는?", options: ["올림픽공원", "KSPO DOME", "잠실실내체육관", "고척스카이돔"], correct: 1, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304843" },
-        { question: "아이유 팬밋업은 몇 년 만의 오프라인 공식 팬행사인가요?", options: ["1년 만", "2년 만", "3년 만", "4년 만"], correct: 1, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304843" },
-        { question: "빅히트 뮤직의 신인 보이그룹 '코르티스(CORTIS)'는 몇 인조 그룹인가요?", options: ["4인조", "5인조", "6인조", "7인조"], correct: 1, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304759" },
-        { question: "'코르티스(CORTIS)'의 데뷔 예정일은 언제인가요?", options: ["8월 15일", "8월 18일", "8월 20일", "8월 25일"], correct: 1, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304759" }
+      '예능': [
+        { question:'런닝맨의 MC가 아닌 사람은?', options:['유재석','김종국','송지효','강호동'], correct:3, hint:'https://ent.sbs.co.kr' },
+        { question:'무한도전의 마지막 방송은 언제?', options:['2017년','2018년','2019년','2020년'], correct:1, hint:'https://ent.sbs.co.kr' },
+        { question:'1박2일의 현재 시즌은?', options:['시즌3','시즌4','시즌5','시즌6'], correct:1, hint:'https://ent.sbs.co.kr' },
+        { question:'나 혼자 산다의 방송사는?', options:['KBS','SBS','MBC','tvN'], correct:2, hint:'https://ent.sbs.co.kr' },
+        { question:'유퀴즈 온 더 블럭의 MC는?', options:['유재석, 조세호','유재석, 이광수','유재석, 하하','유재석, 박명수'], correct:0, hint:'https://ent.sbs.co.kr' },
+        { question:'골목식당의 MC는?', options:['백종원','이연복','최현석','김풍'], correct:0, hint:'https://ent.sbs.co.kr' }
       ],
       '스타': [
-        { question: "박진주가 출연하는 드라마 '내 딸 친구의 엄마'에서 박진주가 맡은 역할의 이름은?", options: ["김희진", "서희진", "박희진", "이희진"], correct: 1, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304724" },
-        { question: "'O'PENing 2025'는 언제 첫 방송되나요?", options: ["8월 15일", "8월 16일", "8월 17일", "8월 18일"], correct: 2, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304724" },
-        { question: "차인표가 수상한 문학상은 무엇인가요?", options: ["이상문학상", "황순원문학상", "김유정문학상", "현대문학상"], correct: 1, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304680" },
-        { question: "차인표의 수상작 소설 제목은 무엇인가요?", options: ["바다사냥", "인어사냥", "물고기사냥", "고래사냥"], correct: 1, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304680" },
-        { question: "차주영이 서경덕 교수와 제작한 광복 80주년 기념 영상의 제목은?", options: ["빛을 담은 항일유산", "역사를 담은 항일유산", "희망을 담은 항일유산", "정신을 담은 항일유산"], correct: 0, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304669" },
-        { question: "차주영의 광복 80주년 기념 영상의 러닝타임은?", options: ["3분 30초", "4분", "4분 30초", "5분"], correct: 2, hint: "https://ent.sbs.co.kr/news/article.do?article_id=E10010304669" }
+        { question:'2023년 가장 화제가 된 연예인 커플은?', options:['현빈-손예진','송중기-송혜교','이민호-김고은','박서준-박민영'], correct:0, hint:'https://ent.sbs.co.kr' },
+        { question:'최근 해외 진출로 주목받는 배우는?', options:['이정재','박서준','송강호','공유'], correct:0, hint:'https://ent.sbs.co.kr' },
+        { question:'2023년 가장 많은 광고 모델을 한 연예인은?', options:['아이유','박보검','송혜교','전지현'], correct:0, hint:'https://ent.sbs.co.kr' },
+        { question:'최근 SNS 팔로워 수가 급증한 스타는?', options:['제니','수지','태연','아이린'], correct:0, hint:'https://ent.sbs.co.kr' },
+        { question:'2023년 가장 화제가 된 연예인 결혼식은?', options:['이승기-이다인','조정석-거미','김우빈-신민아','이종석-한효주'], correct:0, hint:'https://ent.sbs.co.kr' },
+        { question:'최근 패션 아이콘으로 주목받는 스타는?', options:['제니','크리스탈','수지','아이유'], correct:0, hint:'https://ent.sbs.co.kr' }
+      ],
+      '해외': [
+        { question:'2023년 아카데미 작품상을 받은 영화는?', options:['에브리씽 에브리웨어 올 앳 원스','탑건: 매버릭','아바타: 물의 길','바빌론'], correct:0, hint:'https://ent.sbs.co.kr' },
+        { question:'테일러 스위프트의 2023년 투어 이름은?', options:['Eras Tour','Reputation Tour','Lover Tour','Folklore Tour'], correct:0, hint:'https://ent.sbs.co.kr' },
+        { question:'2023년 가장 화제가 된 할리우드 커플은?', options:['트래비스 켈시-테일러 스위프트','톰 홀랜드-젠데이아','티모시 샬라메-카일리 제너','레오나르도 디카프리오-지지 하디드'], correct:0, hint:'https://ent.sbs.co.kr' },
+        { question:'넷플릭스 오리지널 중 2023년 최고 화제작은?', options:['웬즈데이','스트레인저 씽즈4','브리저튼3','더 크라운6'], correct:0, hint:'https://ent.sbs.co.kr' },
+        { question:'2023년 빌보드 올해의 아티스트는?', options:['테일러 스위프트','해리 스타일스','배드 버니','올리비아 로드리고'], correct:0, hint:'https://ent.sbs.co.kr' },
+        { question:'마블 시네마틱 유니버스의 2023년 작품은?', options:['가디언즈 오브 갤럭시 Vol.3','앤트맨과 와스프: 퀀텀매니아','더 마블스','모든 것'], correct:3, hint:'https://ent.sbs.co.kr' }
       ]
     };
 
-    let currentCategory = '';
-    let currentQuestionIndex = 0;
-    let currentQuestions = [];
-    let answered = false;
-    let userNickname = '';
-    let correctAnswers = 0;
+    /* ---------------- 화면 전환 (async) ---------------- */
+    async function showScreen(screenId){
+      const screens=['home-screen','nickname-screen','quiz-screen','result-screen','admin-login-screen','admin-screen','admin-create-screen'];
+      screens.forEach(id=>document.getElementById(id).classList.add('hidden'));
+      document.getElementById(screenId).classList.remove('hidden');
 
-    let rankings = JSON.parse(localStorage.getItem('quizRankings') || '[]');
-    if (!Array.isArray(rankings) || rankings.length === 0) {
-      rankings = [
-        { nickname: "민수", category: "방송", score: 95 },
-        { nickname: "지영", category: "영화", score: 90 },
-        { nickname: "철수", category: "뮤직", score: 88 },
-        { nickname: "영희", category: "스타", score: 85 },
-        { nickname: "하준", category: "방송", score: 82 },
-        { nickname: "수빈", category: "영화", score: 80 }
-      ];
-      localStorage.setItem('quizRankings', JSON.stringify(rankings));
-    }
-    let totalParticipants = Number(localStorage.getItem('totalParticipants') || '150');
-    localStorage.setItem('totalParticipants', String(totalParticipants));
-
-    function updateHomeBoards() {
-      $('totalParticipants').textContent = String(totalParticipants);
-      const board = $('homeRankingBoard');
-      if (!rankings.length) {
-        board.textContent = '아직 랭킹 데이터가 없습니다.';
-      } else {
-        board.innerHTML = rankings.slice(0, 5).map((r, i) => {
-          const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '위';
-          return `<div class="flex items-center justify-between gap-2 py-2 px-3 rounded-lg bg-gray-50">
-            <span class="font-semibold">${medal}</span>
-            <span class="flex-1 text-center">${r.nickname}</span>
-            <span class="text-sm text-gray-500">${r.score}점</span>
-          </div>`;
-        }).join('');
-      }
-    }
-
-    // 관리자가 만든 퀴즈(활성) 우선 사용
-    function getAdminQuizzesByCategory(category){
-      const arts = readArticles().filter(a => a.active && a.category===category && Array.isArray(a.quizzes) && a.quizzes.length);
-      const qs = [];
-      arts.forEach(a=>{
-        a.quizzes.forEach(q=>{
-          if(q.type==='MCQ' && Array.isArray(q.options) && q.options.length>=4){
-            qs.push({question:q.question, options:q.options.slice(0,4), correct:Number(q.correct)||0, hint:a.url||''});
-          }else if(q.type==='OX'){
-            const correct = (String(q.answer||'O').toUpperCase()==='X')?1:0;
-            qs.push({question:q.question, options:['O','X'], correct, hint:a.url||''});
-          } // SHORT는 사용자 화면에선 건너뜀
-        });
-      });
-      return qs;
-    }
-
-    function startQuiz(category) {
-      currentCategory = category;
-      $('selectedCategory').textContent = `${category} 퀴즈`;
-      hide($('homeScreen')); show($('nicknameScreen'));
-      $('nicknameInput').value = ''; $('nicknameInput').focus();
-    }
-
-    function pickRandom(list, n) {
-      const a = list.slice();
-      for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [a[i], a[j]] = [a[j], a[i]];
-      }
-      return a.slice(0, n);
-    }
-
-    function startQuizWithNickname() {
-      const nickname = $('nicknameInput').value.trim();
-      if (!nickname) { alert('닉네임을 입력해주세요!'); return; }
-      userNickname = nickname;
-
-      const adminQs = getAdminQuizzesByCategory(currentCategory);
-      const need = 6;
-      let list = adminQs.slice(0, need);
-      if (list.length < need) {
-        const fallback = quizData[currentCategory] || [];
-        const remain = need - list.length;
-        list = list.concat(pickRandom(fallback, remain));
-      } else {
-        list = pickRandom(list, need);
+      if(screenId==='home-screen'){
+        document.getElementById('admin-button-container').style.display='block';
+        renderTodayRanking('today-ranking');
       }
 
-      currentQuestions = list;
-      currentQuestionIndex = 0;
-      correctAnswers = 0;
+      if(screenId==='result-screen'){
+        renderTodayRanking('overall-ranking-10', 10);
 
-      hide($('nicknameScreen')); show($('quizScreen'));
-      $('categoryTitle').textContent = `${currentCategory} 퀴즈 - ${userNickname}님`;
+        // 1) 메모리/세션 캐시 즉시 렌더 시도
+        const mem = loadCachedNews();
+        if (mem && mem.length) {
+          renderNewsList('news-container', mem);
+        } else {
+          newsSkeleton('news-container', 5);
+        }
 
-      showQuestion();
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-      updateHomeBoards();
-      // 상단 카운터 텍스트는 사용하지 않음
-      const qc = $('questionCounter'); if (qc) qc.style.display = 'none';
-      $('nicknameInput').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') startQuizWithNickname();
-      });
-    });
-
-    function showQuestion() {
-      const q = currentQuestions[currentQuestionIndex];
-      answered = false;
-
-      const progress = ((currentQuestionIndex + 1) / currentQuestions.length) * 100;
-      $('progressBar').style.width = `${progress}%`;
-      $('progressText').textContent = `${currentQuestionIndex + 1} / ${currentQuestions.length}`;
-
-      $('questionText').textContent = q.question;
-
-      const optionsContainer = $('optionsContainer');
-      optionsContainer.innerHTML = '';
-
-      q.options.forEach((opt, idx) => {
-        const div = document.createElement('div');
-        div.className = 'quiz-option bg-gray-50 hover:bg-gray-100 p-4 rounded-lg cursor-pointer border-2 border-transparent transition-all';
-        div.textContent = `${idx + 1}. ${opt}`;
-        div.onclick = () => selectAnswer(idx, div);
-        optionsContainer.appendChild(div);
-      });
-
-      // 진행 중에는 헤더/프로그레스 보이기
-      show(document.getElementById('quizHeaderRow'));
-      show(document.getElementById('quizProgressWrap'));
-    }
-
-    function selectAnswer(selectedIndex, el) {
-      if (answered) return;
-      answered = true;
-
-      const q = currentQuestions[currentQuestionIndex];
-      const ok = selectedIndex === q.correct;
-      if (ok) correctAnswers++;
-
-      const options = document.querySelectorAll('.quiz-option');
-      options.forEach(o => o.style.pointerEvents = 'none');
-
-      options[q.correct].classList.add('border-green-500', 'bg-green-100');
-      if (!ok) el.classList.add('border-red-500', 'bg-red-100');
-
-      showTooltip(ok ? '정답!' : '오답!', ok);
-      setTimeout(nextQuestion, 1200);
-    }
-
-    function showTooltip(msg, ok) {
-      const t = document.createElement('div');
-      t.className = `tooltip px-6 py-3 rounded-2xl text-white text-xl font-bold ${ok ? 'bg-green-500' : 'bg-red-500'}`;
-      t.textContent = msg;
-      document.body.appendChild(t);
-      setTimeout(() => document.body.removeChild(t), 1100);
-    }
-
-    function nextQuestion() {
-      currentQuestionIndex++;
-      if (currentQuestionIndex < currentQuestions.length) showQuestion();
-      else showCompletionView();
-    }
-
-    function scoreMessage(score) {
-      if (score >= 90) return "완벽해요! 오늘 뉴스 마스터 🔥";
-      if (score >= 70) return "아주 좋아요! 한 끗만 더 ✨";
-      if (score >= 50) return "괜찮아요! 조금만 더 파고들면 됩니다 💪";
-      if (score >= 30) return "시동 걸렸어요! 다음엔 더 잘할 수 있어요 🚀";
-      return "괜찮아요! 기사 힌트도 적극 활용해보자 😊";
-    }
-
-    // 하단 박스 빌더: 랭킹 / 인기뉴스 (각각 박스)
-    function buildRankingBox(rankingHTML) {
-      return `
-        <div class="bg-white rounded-2xl shadow p-5">
-          <h4 class="text-lg font-bold text-gray-800 mb-3">🏆 오늘의 랭킹 TOP 10</h4>
-          <div class="space-y-2">
-            ${rankingHTML}
-          </div>
-        </div>
-      `;
-    }
-    function buildPopularBox() {
-      const howMany = 5;
-      const selected = pickRandom(popularArticlesTop10, Math.min(howMany, popularArticlesTop10.length));
-      while (selected.length < howMany) selected.push({ title: '콘텐츠 준비 중', url: '#', placeholder: true });
-
-      const items = selected.map((item) => `
-        <a href="${item.url}" target="_blank" rel="noopener" 
-           class="block rounded-2xl border border-gray-200 bg-white px-4 py-3 hover:shadow transition kb">
-          ${item.title}
-        </a>
-      `).join('');
-
-      return `
-        <div class="bg-white rounded-2xl shadow p-5">
-          <h4 class="text-lg font-bold text-gray-800 mb-3">🔥 오늘의 인기뉴스 TOP 5</h4>
-          <div class="grid gap-2">
-            ${items}
-          </div>
-        </div>
-      `;
-    }
-
-    function showCompletionView() {
-      const score = Math.round((correctAnswers / currentQuestions.length) * 100);
-
-      totalParticipants += 1;
-      localStorage.setItem('totalParticipants', String(totalParticipants));
-      rankings.push({ nickname: userNickname, category: currentCategory, score });
-      rankings.sort((a, b) => b.score - a.score);
-      rankings = rankings.slice(0, 50);
-      localStorage.setItem('quizRankings', JSON.stringify(rankings));
-
-      const rankingHTML = rankings.slice(0, 10).map((r, i) => {
-        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '위';
-        const me = r.nickname === userNickname ? 'bg-yellow-100' : '';
-        return `<div class="flex items-center justify-between gap-2 py-2 px-3 rounded-lg bg-gray-50 ${me}">
-          <span class="font-semibold">${medal}</span>
-          <span class="flex-1 text-center">${r.nickname}</span>
-          <span class="text-sm text-gray-500">${r.score}점 (${r.category})</span>
-        </div>`;
-      }).join('');
-
-      // 결과 화면: 상단 헤더/프로그레스바 감춤, 좌상단 단독 홈버튼 없음
-      hide(document.getElementById('quizHeaderRow'));
-      hide(document.getElementById('quizProgressWrap'));
-
-      const box = $('optionsContainer');
-      box.innerHTML = `
-        <div class="space-y-6">
-          <!-- 내 결과 박스 -->
-          <div class="bg-white rounded-2xl border border-gray-200 shadow p-6 text-center">
-            <div class="text-5xl mb-3">🎉</div>
-            <h3 class="text-2xl font-bold text-gray-800 mb-1">${currentCategory} 퀴즈 완료!</h3>
-            <p class="text-purple-600 font-bold mb-3">${userNickname}님의 점수: ${score}점 (${correctAnswers}/${currentQuestions.length})</p>
-            <p class="text-gray-600 mb-4 kb">${scoreMessage(score)}</p>
-            <div class="flex items-center justify-center gap-2 flex-wrap">
-              <button onclick="retryQuiz()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">다시 풀기</button>
-              <button onclick="goHome()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">홈으로 가기</button>
-            </div>
-          </div>
-
-          <!-- 하단: 좌우 5:5 -->
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
-              ${buildRankingBox(rankingHTML)}
-            </div>
-            <div>
-              ${buildPopularBox()}
-            </div>
-          </div>
-        </div>
-      `;
-
-      // 문제 본문/힌트 버튼 감춤
-      $('questionText').textContent = '';
-      $('hintBtn').style.display = 'none';
-
-      updateHomeBoards();
-    }
-
-    function retryQuiz() {
-      // 헤더/프로그레스 복원
-      show(document.getElementById('quizHeaderRow'));
-      show(document.getElementById('quizProgressWrap'));
-
-      const adminQs = getAdminQuizzesByCategory(currentCategory);
-      const need = 6;
-      let list = adminQs.slice(0, need);
-      if (list.length < need) {
-        const fallback = quizData[currentCategory] || [];
-        const remain = need - list.length;
-        list = list.concat(pickRandom(fallback, remain));
-      } else {
-        list = pickRandom(list, need);
-      }
-      currentQuestions = list;
-      currentQuestionIndex = 0;
-      correctAnswers = 0;
-      $('hintBtn').style.display = 'inline-flex';
-      showQuestion();
-    }
-
-    function showHint() {
-      const q = currentQuestions[currentQuestionIndex];
-      if (q && q.hint) window.open(q.hint, '_blank');
-    }
-
-    function goHome() {
-      hide($('quizScreen')); hide($('nicknameScreen')); show($('homeScreen'));
-      $('hintBtn').style.display = 'inline-flex';
-      show(document.getElementById('quizHeaderRow'));
-      show(document.getElementById('quizProgressWrap'));
-      updateHomeBoards();
-    }
-
-    // 관리자/사용자 전환 버튼
-    $('btnGoAdmin').addEventListener('click', ()=>{
-      hide($('homeScreen')); hide($('nicknameScreen')); hide($('quizScreen'));
-      show($('adminWrap'));
-      hide($('btnGoAdmin')); show($('btnGoUser'));
-      if(localStorage.getItem('logged_demo')==='1'){ showList(); } else { showLogin(); }
-    });
-    $('btnGoUser').addEventListener('click', ()=>{
-      show($('homeScreen'));
-      hide($('adminWrap'));
-      show($('btnGoAdmin')); hide($('btnGoUser'));
-    });
-
-    /* ===================== 관리자 로직 ===================== */
-    let editingIndex = null;
-    let createPreviewQuizzes = [];
-
-    function showLogin(){
-      show($('loginScreen')); hide($('listScreen')); hide($('createScreen')); hide($('editScreen')); hide($('settingsScreen'));
-      $('logoutBtn').classList.add('hidden');
-    }
-    function showList(){
-      hide($('loginScreen')); show($('listScreen')); hide($('createScreen')); hide($('editScreen')); hide($('settingsScreen'));
-      $('logoutBtn').classList.remove('hidden');
-      renderList();
-    }
-    function showCreate(){
-      hide($('loginScreen')); hide($('listScreen')); show($('createScreen')); hide($('editScreen')); hide($('settingsScreen'));
-    }
-    function showEdit(){
-      hide($('loginScreen')); hide($('listScreen')); hide($('createScreen')); show($('editScreen')); hide($('settingsScreen'));
-    }
-
-    // 로그인
-    $('loginForm').addEventListener('submit', (e)=>{
-      e.preventDefault();
-      const id=$('loginId').value.trim(), pw=$('loginPw').value.trim();
-      if(id===VALID_ID && pw===VALID_PW){ localStorage.setItem('logged_demo','1'); showList(); }
-      else alert('아이디 또는 비밀번호가 잘못되었습니다.');
-    });
-    $('logoutBtn').addEventListener('click', ()=>{ localStorage.removeItem('logged_demo'); showLogin(); });
-
-    // 설정 화면
-    $('settingsBtn').addEventListener('click', ()=>{
-      hide($('loginScreen')); hide($('listScreen')); hide($('createScreen')); hide($('editScreen'));
-      show($('settingsScreen'));
-      $('gptApiKeyInput').value = localStorage.getItem('gpt_api_key') || '';
-    });
-    $('backToListBtnSettings').addEventListener('click', showList);
-    $('saveGptKeyBtn').addEventListener('click', ()=>{
-      const v = $('gptApiKeyInput').value.trim();
-      if(!v){ alert('API Key를 입력하세요.'); return; }
-      localStorage.setItem('gpt_api_key', v);
-      alert('저장되었습니다.');
-    });
-
-    // 목록 렌더
-    function renderList(){
-      const onlyActive = $('filterActive').checked;
-      const tb = $('quizList'); tb.innerHTML='';
-      const list = readArticles();
-      list.forEach((a,i)=>{
-        if(onlyActive && !a.active) return;
-        const tr=document.createElement('tr');
-        tr.innerHTML = `
-          <td class="p-3 align-top">
-            <a href="#" data-i="${i}" class="text-indigo-600 hover:underline font-semibold">${a.title||'(제목 없음)'}</a>
-            <div class="text-xs text-gray-500">${a.url||''}</div>
-          </td>
-          <td class="p-3 align-top">${a.category||''}</td>
-          <td class="p-3 align-top">${a.active?'<span class="badge on">사용</span>':'<span class="badge off">미사용</span>'}</td>
-          <td class="p-3 align-top"><button class="px-3 py-1 rounded bg-red-500 text-white text-xs" data-del="${i}">삭제</button></td>
-        `;
-        tb.appendChild(tr);
-      });
-      tb.querySelectorAll('[data-del]').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          const idx=+btn.getAttribute('data-del');
-          if(confirm('정말 삭제하시겠습니까?')){
-            const arr = readArticles(); arr.splice(idx,1); writeArticles(arr); renderList();
+        // 2) 퀴즈 시작 시점에 만들어둔 프리패치 Promise를 최대 1200ms까지 기다렸다가 반영
+        try {
+          if (NEWS_PROMISE) {
+            const items = await promiseWithTimeout(NEWS_PROMISE, 1200);
+            if (Array.isArray(items) && items.length) renderNewsList('news-container', items);
           }
-        });
-      });
-      tb.querySelectorAll('a[data-i]').forEach(a=>{
-        a.addEventListener('click',(e)=>{
-          e.preventDefault();
-          openEdit(+a.getAttribute('data-i'));
-        });
+        } catch(e) { /* 타임아웃은 조용히 무시 */ }
+
+        // 3) 최신 데이터로 조용히 갱신
+        ensureFreshRSS('news-container', 5);
+      }
+    }
+
+    function selectCategory(category){ currentCategory=category; showScreen('nickname-screen'); }
+
+    function startQuiz(){
+      const nickname=document.getElementById('nickname-input').value.trim();
+      if(!nickname){ alert('닉네임을 입력해주세요!'); return; }
+      currentNickname=nickname; currentQuizIndex=0; totalScore=0; correctCount=0;
+
+      // 결과 화면 즉시 노출을 위한 사전 프리패치 시작
+      NEWS_PROMISE = warmRSSCache(); // 글로벌 프라미스에 저장
+
+      showScreen('quiz-screen'); updateQuizHeader(); loadQuestion();
+    }
+
+    function goHome(){ showScreen('home-screen'); document.getElementById('nickname-input').value=''; }
+
+    function showAdminLogin(){
+      if(isAuthed()){ showAdminPage(); return; }
+      showScreen('admin-login-screen'); document.getElementById('admin-button-container').style.display='none';
+    }
+    function showAdminPage(){
+      if(!isAuthed()){ showAdminLogin(); return; }
+      showScreen('admin-screen'); document.getElementById('admin-button-container').style.display='none'; renderCategoryTable();
+    }
+
+    /* ---------------- 퀴즈 진행 ---------------- */
+    function updateQuizHeader(){ document.getElementById('quiz-header').textContent=`${currentCategory} 퀴즈 - ${currentNickname}님`; }
+
+    function loadQuestion(){
+      const quiz=quizData[currentCategory][currentQuizIndex];
+      document.getElementById('question-text').textContent=quiz.question;
+      document.getElementById('progress-text').textContent=`${currentQuizIndex+1}/6`;
+      document.getElementById('progress-bar').style.width=`${((currentQuizIndex+1)/6)*100}%`;
+
+      const optionsContainer=document.getElementById('options-container'); optionsContainer.innerHTML='';
+      quiz.options.forEach((opt,idx)=>{
+        const btn=document.createElement('button');
+        btn.className='w-full p-4 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors border-2 border-transparent hover:border-purple-200';
+        btn.textContent=`${idx+1}. ${opt}`;
+        btn.onclick=()=>selectAnswer(idx);
+        optionsContainer.appendChild(btn);
       });
     }
-    $('filterActive').addEventListener('change', renderList);
 
-    // 생성 화면 진입/나가기
-    $('createQuizBtn').addEventListener('click', ()=>{
-      $('createUse').checked = true;
-      $('createCategory').value = '방송';
-      $('createTitle').value=''; $('createUrl').value=''; $('createContent').value='';
-      createPreviewQuizzes = []; $('createPreview').innerHTML=''; $('createActions').classList.add('hidden');
-      showCreate();
-    });
-    $('backToListBtn1').addEventListener('click', showList);
-    $('backToListBtn2').addEventListener('click', showList);
+    function selectAnswer(sel){
+      const quiz=quizData[currentCategory][currentQuizIndex];
+      const isCorrect=sel===quiz.correct;
+      if(isCorrect){ totalScore+=scoringWeights[currentQuizIndex]; correctCount+=1; showTooltip('정답!','bg-green-500'); }
+      else { showTooltip(`오답! 정답: ${quiz.options[quiz.correct]}`,'bg-red-500'); }
 
-    // 더미 퀴즈 생성기 (키 없이 테스트용)
-    function dummyQuizzes(category, content, count){
-      const pool = [
-        {type:'MCQ', question:`${category} 기사 핵심은 무엇인가요?`, options:['새 발표','수상','투어 일정','논란'], correct:0, explanation:'본문 요약'},
-        {type:'OX', question:`본문에 일정이 언급되었나요?`, answer:'O', explanation:'첫 문단'},
-        {type:'MCQ', question:`향후 계획으로 맞는 것은?`, options:['파트2 공개','활동 중단','해외 이주','휴식'], correct:0, explanation:'후반부'}
+      const buttons=document.querySelectorAll('#options-container button');
+      buttons.forEach((b,i)=>{ if(i===quiz.correct) b.classList.add('bg-green-200','border-green-400'); else if(i===sel&&!isCorrect) b.classList.add('bg-red-200','border-red-400'); b.disabled=true; });
+
+      setTimeout(()=>{ currentQuizIndex++; if(currentQuizIndex<6) loadQuestion(); else showResult(); }, 1200);
+    }
+
+    function showTooltip(msg,bg){ const t=document.getElementById('answer-tooltip'); t.textContent=msg; t.className=`tooltip fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 px-6 py-3 rounded-lg text-white font-semibold text-lg z-50 ${bg}`; t.classList.remove('hidden'); setTimeout(()=>t.classList.add('hidden'),700); }
+    function showHint(){ const quiz=quizData[currentCategory][currentQuizIndex]; window.open(quiz.hint,'_blank'); }
+
+    function showResult(){
+      const roundedScore=Math.min(100, Math.max(0, Math.round(totalScore/5)*5));
+      totalParticipants++; document.getElementById('total-participants').textContent=`${totalParticipants.toLocaleString()}명`;
+      saveParticipant({ nickname: currentNickname, category: currentCategory, totalScore: roundedScore, ts: Date.now() });
+
+      showScreen('result-screen');
+      document.getElementById('result-title').textContent=`${currentCategory} 퀴즈 풀기 완료!`;
+      document.getElementById('result-score').textContent=`${currentNickname}님의 점수: ${roundedScore}점 (정답 ${correctCount}/6)`;
+
+      let m=''; if(roundedScore===100) m='완벽해요! 당신은 진정한 연예계 전문가네요! 🏆';
+      else if(roundedScore>=70) m='훌륭해요! 연예계 소식에 관심이 많으시네요! 🌟';
+      else if(roundedScore>=40) m='괜찮아요! 조금만 더 관심을 가져보세요! 👍';
+      else m='아쉬워요! 연예뉴스를 더 많이 보시는 걸 추천해요! 📺';
+      document.getElementById('result-message').textContent=m;
+
+      renderTodayRanking('overall-ranking-10', 10);
+    }
+
+    function retryQuiz(){ currentQuizIndex=0; totalScore=0; correctCount=0; showScreen('quiz-screen'); updateQuizHeader(); loadQuestion(); }
+    function openNews(url){ window.open(url,'_blank'); }
+
+    /* ---------------- 랭킹 ---------------- */
+    function renderTodayRanking(containerId, limit=5){
+      const wrap=document.getElementById(containerId); if(!wrap) return;
+      const list=loadParticipants(); const today=getSeoulDateString(); const banned=new Set(['모모','ㅇㄹㅇ']);
+      const todays=list.filter(r=>getSeoulDateString(r.ts)===today).filter(r=>!banned.has(r.nickname));
+
+      const best=new Map();
+      todays.forEach(r=>{ const cur=best.get(r.nickname); if(!cur||r.totalScore>cur.totalScore||(r.totalScore===cur.totalScore&&r.ts<cur.ts)) best.set(r.nickname,r); });
+      const top=Array.from(best.values()).sort((a,b)=>(b.totalScore-a.totalScore)||(a.ts-b.ts)).slice(0,limit);
+
+      if(!top.length){ wrap.innerHTML=`<div class="text-center text-gray-500 py-6">아직 기록이 없습니다. 첫 랭킹의 주인공이 되어보세요!</div>`; return; }
+
+      wrap.innerHTML='';
+      top.forEach((r,i)=>{
+        const row=document.createElement('div'); row.className=`grid grid-cols-3 gap-4 py-2 ${i<top.length-1?'border-b':''}`;
+        const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1); const medalClass=i===0?'medal-gold':i===1?'medal-silver':i===2?'medal-bronze':'text-gray-500';
+        row.innerHTML=`
+          <div class="text-center"><span class="${medalClass} ${i<3?'text-2xl':''}">${medal}</span></div>
+          <div class="text-center"><span class="font-semibold">${r.nickname}</span></div>
+          <div class="text-center"><span class="text-purple-600 font-semibold">${r.totalScore}점 (${r.category})</span></div>
+        `;
+        wrap.appendChild(row);
+      });
+    }
+
+    /* ---------------- 관리자 목록 ---------------- */
+    function getLastModifiedOfCategory(cat){
+      const list=quizData[cat]||[]; if(!list.length) return null;
+      const latest=list.reduce((acc,q)=>{ const t=new Date(q.registrationDate||0).getTime(); return t>acc?t:acc; },0);
+      return latest?new Date(latest):null;
+    }
+    function formatDateK(d){ if(!d) return '-'; const yyyy=d.getFullYear(); const mm=String(d.getMonth()+1).padStart(2,'0'); const dd=String(d.getDate()).padStart(2,'0'); const hh=String(d.getHours()).padStart(2,'0'); const mi=String(d.getMinutes()).padStart(2,'0'); return `${yyyy}.${mm}.${dd} ${hh}:${mi}`; }
+    function renderCategoryTable(){
+      const cats=['아이돌','드라마','영화','예능','스타','해외']; const tbody=document.getElementById('category-table'); tbody.innerHTML='';
+      cats.forEach(cat=>{
+        (quizData[cat]||[]).forEach((q,i)=>{ if(!q.id) q.id=2000+i; if(!q.registrationDate) q.registrationDate=new Date(Date.now()-i*1000).toISOString(); });
+        const cnt=(quizData[cat]||[]).length; const last=getLastModifiedOfCategory(cat);
+        const tr=document.createElement('tr');
+        tr.innerHTML=`
+          <td class="border border-gray-300 px-4 py-3">${cat}</td>
+          <td class="border border-gray-300 px-4 py-3 text-center">${cnt}개</td>
+          <td class="border border-gray-300 px-4 py-3 text-center text-sm">${formatDateK(last)}</td>
+          <td class="border border-gray-300 px-4 py-3 text-center">
+            <button onclick="openCategoryUpdate('${cat}')" class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded text-sm transition-colors">수정</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    /* ---------------- 카테고리 업데이트 ---------------- */
+    let editingCategory=null;
+    function openCategoryUpdate(cat){
+      if(!isAuthed()){ showAdminLogin(); return; }
+      editingCategory=cat; showScreen('admin-create-screen');
+      document.getElementById('admin-create-title').textContent=`퀴즈 업데이트 - ${cat}`;
+
+      const cur=(quizData[cat]||[]).slice(0,2).map(q=>({ question:q.question, options:q.options, correctIndex:q.correct, hintUrl:q.hint||'' }));
+      while(cur.length<2){ cur.push({ question:'새 문제', options:['보기1','보기2','보기3','보기4'], correctIndex:0, hintUrl:'' }); }
+      document.getElementById('admin-quiz-json').value=JSON.stringify({ quizzes:cur }, null, 2);
+      document.getElementById('preview-area').classList.add('hidden');
+      window.scrollTo({ top:0, behavior:'smooth' });
+    }
+
+    let lastCreateParsed=null;
+    function validateCreateJsonText(text){
+      try{
+        const parsed=JSON.parse(text);
+        if(!parsed.category && parsed['카테고리']) parsed.category=parsed['카테고리'];
+        if(!parsed.category && !editingCategory) return {ok:false,msg:'category 문자열이 없으면, 목록에서 카테고리를 먼저 선택해야 합니다.'};
+        if(!parsed.quizzes||!Array.isArray(parsed.quizzes)||!parsed.quizzes.length) return {ok:false,msg:'quizzes 배열(1개 이상)이 필요합니다.'};
+        for(let i=0;i<parsed.quizzes.length;i++){
+          const q=parsed.quizzes[i];
+          if(!q.question) return {ok:false,msg:`${i+1}번째 퀴즈: question이 필요합니다.`};
+          if(!Array.isArray(q.options)||q.options.length!==4) return {ok:false,msg:`${i+1}번째 퀴즈: options는 4개여야 합니다.`};
+          if(typeof q.correctIndex!=='number'||q.correctIndex<0||q.correctIndex>3) return {ok:false,msg:`${i+1}번째 퀴즈: correctIndex는 0~3입니다.`};
+        }
+        return {ok:true,data:parsed};
+      }catch(e){ return {ok:false,msg:`JSON 형식 오류: ${e.message}`}; }
+    }
+    function showToast(m,ok=true){ const el=document.createElement('div'); el.className=`fixed top-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg shadow-md text-white z-50 ${ok?'bg-purple-600':'bg-red-500'}`; el.textContent=m; document.body.appendChild(el); setTimeout(()=>el.remove(),1500); }
+    function showValidationTooltip(m,ok=true){ showToast(m,ok); }
+    function validateQuizJson(){ const t=document.getElementById('admin-quiz-json').value; const r=validateCreateJsonText(t); if(r.ok) lastCreateParsed=r.data; else lastCreateParsed=null; showValidationTooltip(r.ok?'검증 통과!':r.msg, !!r.ok); return r.ok; }
+    function previewQuiz(){
+      if(!validateQuizJson()) return;
+      const p=lastCreateParsed; const area=document.getElementById('preview-area'); const content=document.getElementById('preview-content'); content.innerHTML='';
+      p.quizzes.forEach((q,idx)=>{ const d=document.createElement('div'); d.className='mb-6 p-4 border border-gray-300 rounded-lg'; d.innerHTML=`
+        <h5 class="font-semibold mb-3">문제 ${idx+1}: ${q.question}</h5>
+        <div class="space-y-2">${q.options.map((opt,i)=>`<div class="p-2 rounded ${i===q.correctIndex?'bg-green-100 border border-green-300':'bg-gray-50'}">${i+1}. ${opt} ${i===q.correctIndex?'(정답)':''}</div>`).join('')}</div>
+        ${q.hintUrl?`<div class="text-xs text-gray-500 mt-2">힌트: ${q.hintUrl}</div>`:''}
+      `; content.appendChild(d); }); area.classList.remove('hidden'); window.scrollTo({ top: area.offsetTop-80, behavior:'smooth' }); }
+    function showAdminList(){ showScreen('admin-screen'); renderCategoryTable(); window.scrollTo({ top:0, behavior:'smooth' }); }
+    function registerQuizGroup(){
+      if(!validateQuizJson()) return;
+      const p=lastCreateParsed; const category=p.category||editingCategory; if(!category){ showToast('카테고리를 찾을 수 없습니다.', false); return; }
+      const regDate=new Date().toISOString();
+      quizData[category]=p.quizzes.map((q,i)=>({ id:3000+i, question:q.question, options:q.options, correct:q.correctIndex, hint:q.hintUrl||'', active:true, registrationDate:regDate, meta:q.meta||{} }));
+      lastCreateParsed=null; showAdminList(); showToast(`[${category}] 카테고리가 업데이트되었습니다!`);
+    }
+
+    /* ---------------- RSS 초고속: 프리패치 → 즉시 렌더 ---------------- */
+    const RSS_URL='https://ent.sbs.co.kr/news/xml/RSSFeed.do';
+    const PROXY_ALLORIGINS_JSON='https://api.allorigins.win/get?url='+encodeURIComponent(RSS_URL); // JSON{ contents }
+    const PROXY_ALLORIGINS_RAW='https://api.allorigins.win/raw?url='+encodeURIComponent(RSS_URL);  // 순수 텍스트
+    const PROXY_CODETABS='https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(RSS_URL);
+    const PROXY_JINA='https://r.jina.ai/http://ent.sbs.co.kr/news/xml/RSSFeed.do';
+
+    const NEWS_CACHE_KEY='ent_news_cache_v1';
+    const NEWS_TTL_MS=3*60*1000;
+
+    let NEWS_MEM=null;
+    let NEWS_MEM_TS=0;
+    let NEWS_PROMISE=null; // 프리패치 프로미스
+
+    function getMemNews(){ return (NEWS_MEM && (Date.now()-NEWS_MEM_TS<NEWS_TTL_MS)) ? NEWS_MEM : null; }
+    function setMemNews(items){ NEWS_MEM=items; NEWS_MEM_TS=Date.now(); }
+    function loadCachedNews(){
+      const mem=getMemNews(); if(mem) return mem;
+      try{ const raw=sessionStorage.getItem(NEWS_CACHE_KEY); if(!raw) return null;
+        const {ts,items}=JSON.parse(raw); if(Date.now()-ts<NEWS_TTL_MS && Array.isArray(items) && items.length){ setMemNews(items); return items; }
+      }catch{} return null;
+    }
+    function saveCachedNews(items){ try{ sessionStorage.setItem(NEWS_CACHE_KEY, JSON.stringify({ts:Date.now(),items})); setMemNews(items); }catch{} }
+
+    function newsSkeleton(containerId,count=5){
+      const box=document.getElementById(containerId); if(!box) return; box.innerHTML='';
+      for(let i=0;i<count;i++){ const card=document.createElement('div'); card.className='p-4 rounded-lg border border-gray-200 skeleton'; card.style.height='52px'; box.appendChild(card); }
+    }
+    function renderNewsList(containerId, items){
+      const box=document.getElementById(containerId); if(!box) return; box.innerHTML='';
+      const list=items.slice(0,5); while(list.length<5){ list.push({ title:'연예계 소식 업데이트를 기다리는 중...', link:'https://ent.sbs.co.kr' }); }
+      list.forEach(({title,link})=>{ const card=document.createElement('div'); card.className='p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors border border-gray-200'; card.onclick=()=>openNews(link); card.innerHTML=`<div class="text-sm text-gray-800 font-medium leading-relaxed">${title}</div>`; box.appendChild(card); });
+    }
+
+    function parseMaybeJSONThenXML(text){
+      // allorigins JSON 형태면 contents를 꺼내 XML 파싱
+      try {
+        const obj = JSON.parse(text);
+        if (obj && typeof obj.contents === 'string') {
+          return parseRSSItems(obj.contents, 5);
+        }
+      } catch(_) {
+        // JSON 아니면 XML로 취급
+      }
+      return parseRSSItems(text, 5);
+    }
+
+    function parseRSSItems(xmlText, max=5){
+      try{
+        const doc=new DOMParser().parseFromString(xmlText,'text/xml');
+        const items = Array.from(doc.querySelectorAll('item')).slice(0,max).map(it=>({
+          title: it.querySelector('title')?.textContent?.trim() || '제목 없음',
+          link: it.querySelector('link')?.textContent?.trim() || '#',
+          pubDate: it.querySelector('pubDate')?.textContent?.trim() || ''
+        }));
+        return items;
+      }catch{ return []; }
+    }
+
+    async function fetchText(url, ms=3000){
+      const ctrl=new AbortController(); const timer=setTimeout(()=>ctrl.abort(), ms);
+      try{
+        const res=await fetch(url,{ signal: ctrl.signal, cache: 'no-store' });
+        return await res.text();
+      } finally { clearTimeout(timer); }
+    }
+
+    async function tryOne(fetcher){
+      const text = await fetcher();
+      const items = parseMaybeJSONThenXML(text);
+      if (!items.length) throw new Error('No items');
+      return items;
+    }
+
+    async function fetchRSSFast(){
+      // 신뢰도 높은 allorigins JSON → raw → codetabs → jina 순
+      const candidates = [
+        ()=>fetchText(PROXY_ALLORIGINS_JSON, 2800),
+        ()=>fetchText(PROXY_ALLORIGINS_RAW, 2800),
+        ()=>fetchText(PROXY_CODETABS, 2800),
+        ()=>fetchText(PROXY_JINA, 2800),
       ];
-      const out=[]; while(out.length<count){ out.push(JSON.parse(JSON.stringify(pool[Math.floor(Math.random()*pool.length)]))); }
-      return out;
+      for (const fn of candidates) {
+        try { return await tryOne(fn); } catch(e) { /* 다음 후보로 */ }
+      }
+      return [];
     }
 
-    function renderQuizCards(containerId, quizzes, withCheckbox){
-      const host=$(containerId); host.innerHTML='';
-      quizzes.forEach((q,i)=>{
-        const card=document.createElement('div');
-        card.className='border border-gray-200 rounded-xl p-3';
-        let head = (withCheckbox?`<input type="checkbox" data-i="${i}" class="mr-2">`:'') + `<b>Q${i+1}.</b> ${q.question||'(질문 없음)'}`;
-        card.innerHTML = `<div class="mb-2">${head}</div>`;
-        if(q.type==='MCQ'){
-          const labs=['A','B','C','D']; const opts=(q.options||[]).slice(0,4);
-          card.innerHTML += opts.map((o,idx)=>`
-            <div class="flex items-center gap-2 text-sm border rounded-lg px-2 py-1 mb-1 ${idx===(q.correct||0)?'border-green-300 bg-green-50':''}">
-              <span class="inline-flex w-6 h-6 items-center justify-center rounded-full bg-indigo-50 font-bold">${labs[idx]}</span>
-              <span>${o||''}</span>
-            </div>`).join('');
-        }else if(q.type==='OX'){
-          const ans = (String(q.answer||'O').toUpperCase()==='X')?'X':'O';
-          ['O','X'].forEach(v=>{
-            card.innerHTML += `
-              <div class="inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1 mr-2 ${ans===v?'border-green-300 bg-green-50':''}">
-                <span class="inline-flex w-6 h-6 items-center justify-center rounded-full bg-indigo-50 font-bold">${v}</span>
-              </div>`;
-          });
-        }else{ // SHORT → 표시만
-          card.innerHTML += `<div class="text-sm text-slate-700"><b>정답(단답)</b>: ${q.answer||''}</div>`;
-        }
-        if(q.explanation){ card.innerHTML += `<div class="text-xs text-slate-500 mt-1">해설: ${q.explanation}</div>`; }
-        host.appendChild(card);
+    async function warmRSSCache(){
+      // 캐시가 신선하면 네트워크 패스
+      const cached = loadCachedNews();
+      if (cached) return cached;
+      const items = await fetchRSSFast();
+      if (items.length) saveCachedNews(items);
+      return items;
+    }
+
+    async function ensureFreshRSS(containerId='news-container', fixedCount=5){
+      const fresh = await fetchRSSFast();
+      if (fresh.length) {
+        const prev = getMemNews() || [];
+        const changed = JSON.stringify(prev.map(i=>i.title)) !== JSON.stringify(fresh.map(i=>i.title));
+        saveCachedNews(fresh);
+        if (changed) renderNewsList(containerId, fresh);
+      } else {
+        if (!getMemNews()) renderNewsList(containerId, []); // 폴백
+      }
+    }
+
+    function promiseWithTimeout(p, ms){
+      return new Promise((resolve, reject)=>{
+        const t=setTimeout(()=>reject(new Error('timeout')), ms);
+        p.then(v=>{ clearTimeout(t); resolve(v); }, e=>{ clearTimeout(t); reject(e); });
       });
     }
-    function getCheckedIndices(containerId){
-      return Array.from(document.querySelectorAll('#'+containerId+' input[type=checkbox]')).filter(x=>x.checked).map(x=>+x.getAttribute('data-i'));
-    }
 
-    // 생성 화면: 퀴즈 생성 (GPT 시도 → 실패 시 더미 폴백)
-    $('createGenerate').addEventListener('click', async ()=>{
-      const content = $('createContent').value.trim();
-      if(!content){ alert('본문을 입력하세요'); return; }
-
-      const category = $('createCategory').value;
-      const key = localStorage.getItem('gpt_api_key');
-
-      async function generateViaGPT(cat, body){
-        if(!key) return null;
-        try{
-          const sys = "You are a quiz generator for Korean entertainment news. Output STRICT JSON with {\"quizzes\":[...]} containing exactly 2 items. Each item: either {\"type\":\"MCQ\",\"question\":\"...\",\"options\":[\"A\",\"B\",\"C\",\"D\"],\"correct\":0-3,\"explanation\":\"...\"} or {\"type\":\"OX\",\"question\":\"...\",\"answer\":\"O\"|\"X\",\"explanation\":\"...\"}. No extra text.";
-          const usr = `카테고리: ${cat}\n다음 기사 본문을 바탕으로 퀴즈 2개를 생성해줘.\n본문:\n${body}`;
-
-          const res = await fetch("https://api.openai.com/v1/chat/completions",{
-            method:"POST",
-            headers:{
-              "Content-Type":"application/json",
-              "Authorization":`Bearer ${key}`
-            },
-            body: JSON.stringify({
-              model: "gpt-4o-mini",
-              messages: [
-                {role:"system", content: sys},
-                {role:"user", content: usr}
-              ],
-              temperature: 0.4,
-              response_format: { type: "json_object" }
-            })
-          });
-
-          if(!res.ok) throw new Error(`HTTP ${res.status}`);
-          const data = await res.json();
-          const text = data.choices?.[0]?.message?.content || "";
-          const parsed = JSON.parse(text);
-          const out = parsed.quizzes || null;
-          if(!Array.isArray(out) || out.length < 2) return null;
-          return out;
-        }catch(e){
-          console.warn("GPT 호출 실패:", e);
-          return null;
-        }
-      }
-
-      let qs = await generateViaGPT(category, content);
-      if(!qs){
-        qs = dummyQuizzes(category, content, 2);
-      }
-
-      createPreviewQuizzes = qs;
-      renderQuizCards('createPreview', createPreviewQuizzes, true);
-      $('createActions').classList.remove('hidden');
+    /* ---------------- 초기화 ---------------- */
+    document.getElementById('nickname-input').addEventListener('keypress',(e)=>{ if(e.key==='Enter') startQuiz(); });
+    document.addEventListener('DOMContentLoaded', async ()=>{
+      renderTodayRanking('today-ranking');
+      // 앱 기동 시 1회 워밍업 (결과 화면 즉시성 향상)
+      NEWS_PROMISE = warmRSSCache();
+      // 주기 갱신(백그라운드)
+      setInterval(()=>ensureFreshRSS(), 120000);
     });
-
-    // 생성 화면: 등록
-    $('createRegister').addEventListener('click', ()=>{
-      const selected = getCheckedIndices('createPreview');
-      if(!selected.length){ alert('등록할 퀴즈를 선택하세요'); return; }
-      const a = {
-        title: $('createTitle').value || $('createContent').value.slice(0,30),
-        category: $('createCategory').value,
-        active: $('createUse').checked,
-        url: $('createUrl').value,
-        content: $('createContent').value,
-        quizzes: selected.map(i=>createPreviewQuizzes[i])
-      };
-      const arr = readArticles(); arr.push(a); writeArticles(arr);
-      showList();
-    });
-
-    // 생성 화면: 선택 재생성
-    $('createRegen').addEventListener('click', ()=>{
-      const selected = getCheckedIndices('createPreview');
-      if(!selected.length){ alert('다시 생성할 퀴즈를 선택하세요'); return; }
-      const content = $('createContent').value.trim();
-      const fresh = dummyQuizzes($('createCategory').value, content, selected.length);
-      selected.forEach((idx,k)=>{ createPreviewQuizzes[idx] = fresh[k]; });
-      renderQuizCards('createPreview', createPreviewQuizzes, true);
-    });
-
-    // 편집
-    function openEdit(index){
-      editingIndex = index;
-      const a = readArticles()[index];
-      $('editCategory').value = a.category||'방송';
-      $('editTitle').value = a.title||'';
-      $('editUrl').value = a.url||'';
-      $('editContent').value = a.content||'';
-      $('editUse').checked = !!a.active;
-      renderQuizCards('appliedList', a.quizzes||[], true);
-      showEdit();
-    }
-
-    $('editRegenSelected').addEventListener('click', ()=>{
-      const arr = readArticles();
-      const a = arr[editingIndex];
-      const selected = getCheckedIndices('appliedList');
-      if(!selected.length){ alert('다시 생성할 퀴즈를 선택하세요'); return; }
-      const fresh = dummyQuizzes(a.category, a.content, selected.length);
-      selected.forEach((idx,k)=>{ a.quizzes[idx] = fresh[k]; });
-      writeArticles(arr);
-      renderQuizCards('appliedList', a.quizzes, true);
-    });
-
-    $('saveArticleBtn').addEventListener('click', ()=>{
-      const arr = readArticles();
-      const a = arr[editingIndex];
-      a.category = $('editCategory').value;
-      a.title = $('editTitle').value;
-      a.url = $('editUrl').value;
-      a.content = $('editContent').value;
-      a.active = $('editUse').checked;
-      writeArticles(arr);
-      alert('저장되었습니다.');
-      showList();
-    });
-
   </script>
+
+  <!-- (Cloudflare script 유지) -->
+  <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96e71f0682b1aa47',t:'MTc1NTA3NjY2NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
 </body>
 </html>
